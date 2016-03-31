@@ -1,0 +1,52 @@
+
+zero : '0' ;
+posDigit : '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
+
+digit   : <zero>
+        | <posDigit> ;
+
+digits  : <digit> <digits>
+        | <digit> ;
+
+posInteger : <posDigit> <digits>
+           | <posDigit> ;
+
+negInteger : '-' <posInteger> ;
+
+integer : <zero>
+        | <negInteger>
+        | <posInteger> ;
+
+float : <integer> '.' <digits> ;
+
+number : <float>
+       | <integer> ;
+
+zeros : <zero> <zeros>
+      | <zero> ;
+
+paddedNumber : <zeros> <number> ;
+
+constant : <paddedNumber>
+         | <number> ;
+
+signedConstant : '+' <signedConstant>
+               | '-' <signedConstant>
+               | <constant> ;
+
+expression : <term> '+' <expression>
+           | <term> '-' <expression>
+           | <term> ;
+
+term : <factor> '*' <xponent>
+     | <factor> '/' <xponent>
+     | <xponent> ;
+
+xponent : <factor> '^' <xponent>
+        | <factor> ;
+
+factor : <signedConstant>
+       | '(' <expression> ')' ;
+
+mvfl : /^/ <expression> /$/ ;
+
