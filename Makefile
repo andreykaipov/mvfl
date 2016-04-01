@@ -3,24 +3,20 @@
 CFLAGS = -std=gnu99 -Wall -g
 LIBFLAGS = -lm
 
-SRCS = mvfl.c linenoise.c mpc.c
-OBJS = $(SRCS:.c=.o)
+SRCS = $(shell find . -name "*.c" | cut -b 3-)
+
+OBJDIR = objs
+OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
+
 MAIN = mvfl
 
-ifeq ($(OS),Windows_NT)
-	TRASH = *.o mvfl.exe
-else
-	TRASH = *.o mvfl
-endif
-
 $(MAIN): $(OBJS)
-	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LIBFLAGS)
+	$(CC) $(CFLAGS) $(OBJS) $(LIBFLAGS) -o $(MAIN)
 
-# The following is an implicit rule, but I like it.
-# $< is the name of the related file that caused this action.
-.c.o:
-	$(CC) $(CFLAGS) -c $<
+$(OBJS): $(OBJDIR)/%.o: %.c
+	$(shell mkdir -p $(dir $@))
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm $(TRASH)
+	rm -rf $(OBJDIR) $(MAIN)
 

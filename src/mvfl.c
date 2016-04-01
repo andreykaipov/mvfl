@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "linenoise.h"
-#include "mpc.h"
+#include "../libs/linenoise.h"
+#include "../libs/mpc.h"
+
+#define GRAMMAR_FILE "src/mvfl-grammar.gr"
 
 static char* prompt = "mvfl> ";
 static char* prompt_exit = ":exit";
@@ -86,7 +88,7 @@ int main( int argc, char** argv ) {
 
     mpc_parser_t* Mvfl = mpc_new("mvfl");
 
-    mpca_lang_contents( MPCA_LANG_DEFAULT, "mvfl-grammar.gr",
+    mpca_lang_contents( MPCA_LANG_DEFAULT, GRAMMAR_FILE,
             Integer, Float, Number, InfixOperator, PrefixOperator,
             Expression, Factor, Term, Base, Exponent,
             Mvfl );
