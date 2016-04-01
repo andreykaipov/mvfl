@@ -1,11 +1,17 @@
 
 # CC = gcc
-CFLAGS = -std=c99 -Wall -g
+CFLAGS = -std=gnu99 -Wall -g
 LIBFLAGS = -lm
 
 SRCS = mvfl.c linenoise.c mpc.c
 OBJS = $(SRCS:.c=.o)
 MAIN = mvfl
+
+ifeq ($(OS),Windows_NT)
+	TRASH = *.o mvfl.exe
+else
+	TRASH = *.o mvfl
+endif
 
 $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) -o $(MAIN) $(OBJS) $(LIBFLAGS)
@@ -16,4 +22,5 @@ $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm *.o *.exe
+	rm $(TRASH)
+
