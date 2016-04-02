@@ -1,21 +1,25 @@
 
-# CC = gcc
+CC ?= gcc
 CFLAGS = -std=gnu99 -Wall -g
 LIBFLAGS = -lm
 
-SRCS = $(shell find . -name "*.c" | cut -b 3-)
+SRCDIR = src/
+LIBDIR = lib/
+OBJDIR = obj/
 
-OBJDIR = objs
-OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
+SRCS = $(shell find $(SRCDIR) $(LIBDIR) -name "*.c")
+OBJS = $(patsubst %.c,$(OBJDIR)%.o,$(SRCS))
 
 MAIN = mvfl
 
 $(MAIN): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIBFLAGS) -o $(MAIN)
 
-$(OBJS): $(OBJDIR)/%.o: %.c
-	$(shell mkdir -p $(dir $@))
+$(OBJS): $(OBJDIR)%.o: %.c | mkdirs
 	$(CC) $(CFLAGS) -c $< -o $@
+
+mkdirs:
+	$(shell mkdir -p $(dir $(OBJS)))
 
 clean:
 	rm -rf $(OBJDIR) $(MAIN)

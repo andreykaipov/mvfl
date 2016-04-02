@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../libs/linenoise.h"
-#include "../libs/mpc.h"
+#include "../lib/linenoise.h"
+#include "../lib/mpc.h"
 
 #define GRAMMAR_FILE "src/mvfl-grammar.gr"
 
