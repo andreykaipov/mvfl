@@ -1,22 +1,28 @@
 
-integer : /[0-9]+/ ;
-float   : /[0-9]+\.[0-9]+/ ;
-number  : ('+'|'-')+ <number>
-        | <float>
-        | <integer> ;
+integer : /[0-9]+/
+        ;
+float   : /[0-9]+\.[0-9]+/
+        ;
+number  : <float>
+        | <integer>
+        ;
 
-prefixOperator : "add" | "sub" | "mul" | "div" ;
+prefixOperator : "add" | "sub" | "mul" | "div"
+               ;
 
-expression : <factor> ('+'|'-') <expression>
-           | <factor> ;
+expression : <factor> ( ('+'|'-') <factor> )*
+           ;
 
-factor : <term> ('*'|'/'|'%') <factor>
-       | <term> ;
+factor : <term> ( ('*'|'/'|'%') <term> )*
+       ;
 
-term : <base> '^' <term>
-     | <base> ;
+term : <base> ('^' <term>)?
+     | ('+'|'-') <term>
+     ;
 
-base : <number> | '(' <expression> ')' ;
+base : <number>
+     | '(' <expression> ')'
+     ;
 
 mvfl : /^/ <expression> /$/ ;
 

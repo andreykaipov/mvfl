@@ -43,6 +43,12 @@ int eval_op( long x, char* op, long y ) {
     if ( strcmp(op, "*") == 0 ) { return x * y; }
     if ( strcmp(op, "/") == 0 ) { return x / y; }
     if ( strcmp(op, "%") == 0 ) { return x % y; }
+    if ( strcmp(op, "^") == 0 ) {
+        int total = 1;
+        int i;
+        for ( i = 0; i < y; i++ ) total *= x;
+        return total;
+    }
     return 0;
 
 }
@@ -50,24 +56,42 @@ int eval_op( long x, char* op, long y ) {
 int eval_arithmetic_expr( mpc_ast_t* ast )
 {
 
+    // If tag contains integer, get the value of its contents.
     if ( strstr( ast->tag, "integer" ) ) {
-        
+
         return atoi( ast->contents );
 
     }
-    else if ( strstr( ast->tag, "base" ) || 
+    // If root of tree, or if <Base> has children, take the middle one.
+    else if ( strstr( ast->tag, "base" ) ||
               strcmp( ast->tag, ">" ) == 0 ) {
-        
+
         return eval_arithmetic_expr( ast->children[ 1 ] );
 
     }
+    // If tag is a term, and has two children, evaluate the sign of the term.
+    else if ( strstr( ast->tag, "term" ) && ast->children_num == 2 ) {
+
+        char* op = ast->children[ 0 ]->contents;
+        long x = eval_arithmetic_expr( ast->children[ 1 ] );
+
+        return eval_op( 0, op, x );
+
+    }
+    // Otherwise, just a general expression. Loop from left to right, looking at each operator.
     else {
 
         long x = eval_arithmetic_expr( ast->children[ 0 ] );
-        char* op = ast->children[ 1 ]->contents;
-        long y =  eval_arithmetic_expr( ast->children[ 2 ] );
 
-        return eval_op( x, op, y );
+        int i;
+        for ( i = 1; i < ast->children_num; i += 2 ) {
+
+            char* op = ast->children[ i ]->contents;
+            x = eval_op( x, op, eval_arithmetic_expr( ast->children[ i + 1 ] ) );
+
+        }
+
+        return x;
 
     }
 
@@ -81,16 +105,19 @@ int main( int argc, char** argv ) {
     mpc_parser_t* InfixOperator = mpc_new("infixOperator");
     mpc_parser_t* PrefixOperator = mpc_new("prefixOperator");
     mpc_parser_t* Expression = mpc_new("expression");
-    mpc_parser_t* Factor = mpc_new("factor");
+    mpc_parser_t* ExpressionTail = mpc_new("expressionTail");
     mpc_parser_t* Term = mpc_new("term");
+    mpc_parser_t* TermTail = mpc_new("termTail");
+    mpc_parser_t* Factor = mpc_new("factor");
     mpc_parser_t* Base = mpc_new("base");
+    mpc_parser_t* SignedBase = mpc_new("signedBase");
     mpc_parser_t* Exponent = mpc_new("exponent");
 
     mpc_parser_t* Mvfl = mpc_new("mvfl");
 
     mpca_lang_contents( MPCA_LANG_DEFAULT, GRAMMAR_FILE,
             Integer, Float, Number, InfixOperator, PrefixOperator,
-            Expression, Factor, Term, Base, Exponent,
+            Expression, ExpressionTail, SignedBase, Factor, Term, TermTail, Base, Exponent,
             Mvfl );
 
     /* Finish initializing grammar. */
@@ -134,8 +161,9 @@ int main( int argc, char** argv ) {
 
     }
 
-    mpc_cleanup( 10, Integer, Float, Number, InfixOperator, PrefixOperator,
-            Expression, Factor, Term, Base, Exponent, Mvfl );
+    mpc_cleanup( 14, Integer, Float, Number, InfixOperator, PrefixOperator,
+            Expression, ExpressionTail, SignedBase, Factor, Term, TermTail, Base, Exponent,
+            Mvfl );
 
     return 0;
 
