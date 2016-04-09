@@ -9,8 +9,6 @@ number : <float>
        | <integer>
        ;
 
-signedNumber : ('+'|'-')? <number> ;
-
 infixExpression : <factor> ( ('+'|'-') <factor> )*
                 ;
 
@@ -28,8 +26,7 @@ base : <number>
 prefixOperator : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
                ;
 
-prefixExpression : <term>
-                 | <prefixOperator> <term>+
+prefixExpression : <prefixOperator> <term>+
                  ;
 
 expression : <infixExpression>
