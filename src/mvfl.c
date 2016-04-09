@@ -11,132 +11,251 @@
 static char* prompt = "mvfl> ";
 static char* prompt_exit = ":exit";
 
-typedef struct {
-    int type;
-    long num;
-    int err;
-} mvfl_val;
+// Our ints our C's longs and our floats is C's doubles.
+typedef long mvfl_int_t;
+typedef double mvfl_float_t;
 
-enum { MVFL_NUM, MVFL_ERR };
-enum { MVFL_ERR_DIV_ZERO, MVFL_ERR_BAD_OP, MVFL_ERR_BAD_NUM };
+// Our types will be stored in enums.
+typedef enum mvfl_type_t mvfl_type_t;
 
-mvfl_val mvfl_val_num( long num ) {
+enum mvfl_type_t {
+    MVFL_INTEGER,
+    MVFL_FLOAT,
+    MVFL_ERROR
+};
 
-    mvfl_val value;
-    value.type = MVFL_NUM;
-    value.num = num;
+// Our error codes are also in enums.
+typedef enum mvfl_err_code_t mvfl_err_code_t;
+
+enum mvfl_err_code_t {
+    MVFL_ERROR_DIV_ZERO,
+    MVFL_ERROR_BAD_OP,
+    MVFL_ERROR_BAD_NUM
+};
+
+// Our number can either be an integer or floating-point decimals.
+typedef union mvfl_number_t mvfl_number_t;
+
+union mvfl_number_t {
+    mvfl_int_t integer;
+    mvfl_float_t floating;
+};
+
+// The manifestation of our values can either be error codes or numbers.
+typedef union mvfl_manifestation_t mvfl_manifestation_t;
+
+union mvfl_manifestation_t {
+    mvfl_err_code_t err_code;
+    mvfl_number_t number;
+};
+
+// Our values have a type, and a manifestation.
+typedef struct mvfl_val_t mvfl_val_t;
+
+struct mvfl_val_t {
+    mvfl_type_t type;
+    mvfl_manifestation_t manifestation;
+};
+
+/* ~~~~~~~~~~ */
+
+mvfl_val_t mvfl_val_from_mvfl_int( mvfl_int_t i ) {
+
+    mvfl_val_t value;
+
+    value.type = MVFL_INTEGER;
+    value.manifestation.number.integer = i;
 
     return value;
 
 }
 
-mvfl_val mvfl_val_err( int err ) {
+mvfl_val_t mvfl_val_from_mvfl_float( mvfl_float_t x ) {
 
-    mvfl_val value;
-    value.type = MVFL_ERR;
-    value.err = err;
+    mvfl_val_t value;
+
+    value.type = MVFL_FLOAT;
+    value.manifestation.number.floating = x;
 
     return value;
 
 }
 
-void mvfl_val_print_num( mvfl_val value ) {
+mvfl_val_t mvfl_val_error( mvfl_err_code_t err_code ) {
 
-    printf( "%li", value.num );
+    mvfl_val_t value;
+
+    value.type = MVFL_ERROR;
+    value.manifestation.err_code = err_code;
+
+    return value;
 
 }
 
-void mvfl_val_print_err( mvfl_val value ) {
+void mvfl_val_print_err( mvfl_val_t value ) {
 
-    switch ( value.err ) {
+    switch ( value.manifestation.err_code ) {
 
-        case MVFL_ERR_DIV_ZERO:
+        case MVFL_ERROR_DIV_ZERO:
             printf( "Error: Cannot divide by zero!" );
             break;
-        case MVFL_ERR_BAD_OP:
+
+        case MVFL_ERROR_BAD_OP:
             printf( "Error: Invalid operator!" );
             break;
-        case MVFL_ERR_BAD_NUM:
+
+        case MVFL_ERROR_BAD_NUM:
             printf( "Error: Invalid number!" );
             break;
+
         default:
-            printf( "Oh there's some other kind of error." );
+            printf( "Oh man there's some other kind of error." );
+            break;
 
     }
 
 }
 
-void mvfl_val_print( mvfl_val value ) {
+void mvfl_val_print( mvfl_val_t value ) {
 
     switch ( value.type ) {
 
-        case MVFL_NUM:
-            mvfl_val_print_num( value );
+        case MVFL_INTEGER:
+            printf( "%li", value.manifestation.number.integer );
             break;
 
-        case MVFL_ERR:
+        // This is just a stupid trick to make floats of value 0 have one leading zero.
+        // It's just for asthetics.
+        case MVFL_FLOAT:
+            if ( value.manifestation.number.floating == (int) value.manifestation.number.floating )
+                printf( "%g.0", value.manifestation.number.floating );
+            else
+                printf( "%.16g", value.manifestation.number.floating );
+            break;
+
+        case MVFL_ERROR:
             mvfl_val_print_err( value );
+            break;
+
+        default:
+            printf( "Lol what am I even printing." );
             break;
 
     }
 
 }
 
-void mvfl_val_println( mvfl_val value ) {
+void mvfl_val_println( mvfl_val_t value ) {
 
     mvfl_val_print( value );
     putchar( '\n' );
 
 }
 
-mvfl_val eval_op( mvfl_val x, char* op, mvfl_val y ) {
+mvfl_val_t eval_op( mvfl_val_t v, char* op, mvfl_val_t w ) {
 
-    if ( x.type == MVFL_ERR ) return x;
-    if ( y.type == MVFL_ERR ) return y;
+    mvfl_type_t type_of_v = v.type;
+    mvfl_type_t type_of_w = w.type;
+
+    if ( type_of_v == MVFL_ERROR ) return v;
+    if ( type_of_w == MVFL_ERROR ) return w;
+
+    mvfl_int_t i = v.manifestation.number.integer;
+    mvfl_int_t j = w.manifestation.number.integer;
+
+    mvfl_float_t x = v.manifestation.number.floating;
+    mvfl_float_t y = w.manifestation.number.floating;
+
     if ( strcmp(op,"+") == 0 || strcmp(op,"add") == 0 ) {
-        return mvfl_val_num( x.num + y.num );
+
+        return ( type_of_v == MVFL_INTEGER &&
+                 type_of_w == MVFL_INTEGER ) ? mvfl_val_from_mvfl_int( i + j ) :
+                   type_of_v == MVFL_INTEGER ? mvfl_val_from_mvfl_float( i + y ) :
+                   type_of_w == MVFL_INTEGER ? mvfl_val_from_mvfl_float( x + j ) :
+                                               mvfl_val_from_mvfl_float( x + y );
+
     }
     else if ( strcmp(op,"-") == 0 || strcmp(op,"sub") == 0 ) {
-        return mvfl_val_num( x.num - y.num );
+
+        return ( type_of_v == MVFL_INTEGER &&
+                 type_of_w == MVFL_INTEGER ) ? mvfl_val_from_mvfl_int( i - j ) :
+                   type_of_v == MVFL_INTEGER ? mvfl_val_from_mvfl_float( i - y ) :
+                   type_of_w == MVFL_INTEGER ? mvfl_val_from_mvfl_float( x - j ) :
+                                               mvfl_val_from_mvfl_float( x - y );
+
     }
     else if ( strcmp(op,"*") == 0 || strcmp(op,"mul") == 0 ) {
-        return mvfl_val_num( x.num * y.num );
+
+        return ( type_of_v == MVFL_INTEGER &&
+                 type_of_w == MVFL_INTEGER ) ? mvfl_val_from_mvfl_int( i * j ) :
+                   type_of_v == MVFL_INTEGER ? mvfl_val_from_mvfl_float( i * y ) :
+                   type_of_w == MVFL_INTEGER ? mvfl_val_from_mvfl_float( x * j ) :
+                                               mvfl_val_from_mvfl_float( x + y );
     }
     else if ( strcmp(op,"/") == 0 || strcmp(op,"div") == 0 ) {
-        return y.num == 0 ? mvfl_val_err( MVFL_ERR_DIV_ZERO )
-                          : mvfl_val_num( x.num / y.num );
+
+        return ( j == 0 || y == 0 )          ? mvfl_val_error( MVFL_ERROR_DIV_ZERO ) :
+               ( type_of_v == MVFL_INTEGER &&
+                 type_of_w == MVFL_INTEGER ) ? mvfl_val_from_mvfl_int( i / j ) :
+                   type_of_v == MVFL_INTEGER ? mvfl_val_from_mvfl_float( i / y ) :
+                   type_of_w == MVFL_INTEGER ? mvfl_val_from_mvfl_float( x / j ) :
+                                               mvfl_val_from_mvfl_float( x / y );
+
     }
     else if ( strcmp(op,"min") == 0 ) {
-        return x.num < y.num ? mvfl_val_num( x.num )
-                             : mvfl_val_num( y.num );
+
+        return ( type_of_v == MVFL_INTEGER &&
+                 type_of_w == MVFL_INTEGER ) ? (( i < j ) ? mvfl_val_from_mvfl_int( i ) : mvfl_val_from_mvfl_int( j ) ) :
+                   type_of_v == MVFL_INTEGER ? (( i < y ) ? mvfl_val_from_mvfl_int( i ) : mvfl_val_from_mvfl_float( y ) ) :
+                   type_of_w == MVFL_INTEGER ? (( x < j ) ? mvfl_val_from_mvfl_int( x ) : mvfl_val_from_mvfl_int( j ) ) :
+                                               (( x < y ) ? mvfl_val_from_mvfl_int( x ) : mvfl_val_from_mvfl_float( y ) );
+
     }
     else if ( strcmp(op,"max") == 0 ) {
-        return y.num < x.num ? mvfl_val_num( x.num )
-                             : mvfl_val_num( y.num );
+
+        return ( type_of_v == MVFL_INTEGER &&
+                 type_of_w == MVFL_INTEGER ) ? (( i > j ) ? mvfl_val_from_mvfl_int( i ) : mvfl_val_from_mvfl_int( j ) ) :
+                   type_of_v == MVFL_INTEGER ? (( i > y ) ? mvfl_val_from_mvfl_int( i ) : mvfl_val_from_mvfl_float( y ) ) :
+                   type_of_w == MVFL_INTEGER ? (( x > j ) ? mvfl_val_from_mvfl_int( x ) : mvfl_val_from_mvfl_int( j ) ) :
+                                               (( x > y ) ? mvfl_val_from_mvfl_int( x ) : mvfl_val_from_mvfl_float( y ) );
+
     }
     // if ( strcmp(op, "%") == 0 ) { return x % y; }
-    else if ( strcmp(op, "^") == 0 || strcmp(op,"pow") == 0 ) {
-        long total = 1;
-        int i;
-        for ( i = 0; i < y.num ; i++ ) total *= x.num;
-        return mvfl_val_num( total );
-    }
-    return mvfl_val_num( 1338 );
+    // else if ( strcmp(op, "^") == 0 || strcmp(op,"pow") == 0 ) {
+    //     long total = 1;
+    //     int i;
+    //     for ( i = 0; i < s ; i++ ) total *= r;
+    //     return mvfl_val_from_mvfl_float( total );
+    // }
+
+    return mvfl_val_error( MVFL_ERROR_BAD_OP );
 
 }
 
-mvfl_val eval_arithmetic_expr( mpc_ast_t* ast ) {
+mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast ) {
 
     // If tag contains integer, get the value of its contents.
     if ( strstr( ast->tag, "number" ) ) {
 
         if ( strstr( ast->tag, "integer" ) ) {
+
             errno = 0;
-            long contents = strtol( ast->contents, NULL, 10 );
-            return errno != ERANGE ? mvfl_val_num( contents )
-                                   : mvfl_val_err( MVFL_ERR_BAD_NUM );
+            mvfl_int_t contents = strtol( ast->contents, NULL, 10 );
+
+            return errno != ERANGE ? mvfl_val_from_mvfl_int( contents )
+                                   : mvfl_val_error( MVFL_ERROR_BAD_NUM );
+
         }
-        else return mvfl_val_num( 1337 );
+        else if ( strstr( ast->tag, "float" ) ) {
+
+            errno = 0;
+            mvfl_float_t contents = strtod( ast->contents, NULL );
+
+            return errno != ERANGE ? mvfl_val_from_mvfl_float( contents )
+                                   : mvfl_val_error( MVFL_ERROR_BAD_NUM );
+
+        }
+        else return mvfl_val_from_mvfl_int( 1337 );
 
     }
     // If root of tree, or if <Base> has children, take the middle one.
@@ -150,8 +269,8 @@ mvfl_val eval_arithmetic_expr( mpc_ast_t* ast ) {
     else if ( strstr( ast->tag, "term" ) && ast->children_num == 2 ) {
 
         char* op = ast->children[ 0 ]->contents;
-        mvfl_val x = eval_arithmetic_expr( ast->children[ 1 ] );
-        mvfl_val zero = mvfl_val_num( 0 );
+        mvfl_val_t x = eval_arithmetic_expr( ast->children[ 1 ] );
+        mvfl_val_t zero = mvfl_val_from_mvfl_int( 0 );
 
         return eval_op( zero, op, x );
 
@@ -160,7 +279,7 @@ mvfl_val eval_arithmetic_expr( mpc_ast_t* ast ) {
     else if ( strstr( ast->tag, "prefixExpression" ) ) {
 
         char* op = ast->children[ 0 ]->contents;
-        mvfl_val x = eval_arithmetic_expr( ast->children[ 1 ] );
+        mvfl_val_t x = eval_arithmetic_expr( ast->children[ 1 ] );
 
         int i;
         for ( i = 2; i < ast->children_num; i += 1 ) {
@@ -175,11 +294,12 @@ mvfl_val eval_arithmetic_expr( mpc_ast_t* ast ) {
     // Otherwise, just an expression or an infix expression. Loop from left to right, looking at each operator.
     else {
 
-        mvfl_val x = eval_arithmetic_expr( ast->children[ 0 ] );
+        mvfl_val_t x = eval_arithmetic_expr( ast->children[ 0 ] );
 
         int i;
         for ( i = 1; i < ast->children_num; i += 2 ) {
 
+// (find_appropriate_evaln( x, ast->children[ i ] ))
             char* op = ast->children[ i ]->contents;
             x = eval_op( x, op, eval_arithmetic_expr( ast->children[ i + 1 ] ) );
 
@@ -232,7 +352,7 @@ int main( int argc, char** argv ) {
         mpc_result_t parsed;
         if ( mpc_parse( "<stdin>", line, Mvfl, &parsed ) ) {
 
-            mvfl_val result = eval_arithmetic_expr( parsed.output );
+            mvfl_val_t result = eval_arithmetic_expr( parsed.output );
             mvfl_val_println( result );
 
             printf("Parse tree:\n");
