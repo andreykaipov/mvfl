@@ -22,5 +22,5 @@ mkdirs:
 	$(shell mkdir -p $(dir $(OBJS)))
 
 clean:
-	rm -rf $(OBJDIR) $(MAIN)
+	rm -rf $(OBJDIR) $(MAIN)*
 
