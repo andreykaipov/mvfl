@@ -1,38 +1,42 @@
 
-integer : /[0-9]+/
+Integer : /[0-9]+/
         ;
 
-float : /[0-9]+\.[0-9]+/
+Float : /[0-9]+\.[0-9]+/
       ;
 
-number : <float>
-       | <integer>
+Number : <Float>
+       | <Integer>
        ;
 
-infixExpression : <factor> ( ('+'|'-') <factor> )*
+InfixExpression : <Factor> ( ('+'|'-') <Factor> )*
                 ;
 
-factor : <term> ( ('*'|'/'|'%') <term> )*
+Factor : <Term> ( ('*'|'/'|'%') <Term> )*
        ;
 
-term : <base> ('^' <term>)?
-     | ('+'|'-') <term>
+Term : <Base> ('^' <Term>)?
+     | ('+'|'-') <Term>
      ;
 
-base : <number>
-     | '(' <expression> ')'
+Base : <Number>
+     | '(' <Expression> ')'
      ;
 
-prefixOperator : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
+PrefixOperator : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
                ;
 
-prefixExpression : <prefixOperator> <term>+
+PrefixExpression : <PrefixOperator> <Term>+
                  ;
 
-expression : <infixExpression>
-           | <prefixExpression>
+Expression : <InfixExpression>
+           | <PrefixExpression>
+           | <Sexpr>
            ;
 
-mvfl : /^/ <expression> /$/ ;
+Sexpr : '(' <Expression>* ')'
+      ;
+
+Mvfl : /^/ <Expression> /$/ ;
 
 

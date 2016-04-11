@@ -1,3 +1,5 @@
+
+/*
 #include "mvfl.h"
 
 mvfl_val_t mvfl_val_from_int( mvfl_int_t );
@@ -218,3 +220,4 @@ mvfl_val_t mvfl_max_intern( mvfl_val_t v, mvfl_val_t w ) {
     }
 
 }
+*/
