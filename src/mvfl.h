@@ -32,6 +32,7 @@ enum mvfl_type_t {
 struct mvfl_cons_cell_t {
     mvfl_val_t * value;
     mvfl_cons_cell_t * next;
+    mvfl_cons_cell_t * prev;
 };
 
 // A sequence of cons cells form a list, or in our case an S-Expression.
@@ -39,6 +40,7 @@ struct mvfl_cons_cell_t {
 struct mvfl_sexpr_t {
     int count;
     mvfl_cons_cell_t * first;
+    mvfl_cons_cell_t * last;
 };
 
 // Our number can either be an integer or floating-point decimals.

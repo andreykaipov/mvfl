@@ -5,8 +5,8 @@
 
 #define GRAMMAR_FILE "src/mvfl-grammar.gr"
 
-// static char* prompt = "mvfl> ";
-// static char* prompt_exit = ":exit";
+static char* prompt = "mvfl> ";
+static char* prompt_exit = ":exit";
 
 void mvfl_val_println( mvfl_val_t* value );
 mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast );
@@ -19,9 +19,11 @@ mvfl_sexpr_t mvfl_sexpr_append( mvfl_sexpr_t sexpr, mvfl_val_t* val );
 void mvfl_sexpr_print( mvfl_sexpr_t sexpr, char open, char close );
 void mvfl_sexpr_delete( mvfl_sexpr_t sexpr );
 mvfl_val_t* mvfl_val_from_sexpr( mvfl_sexpr_t sexpr );
+void mvfl_val_delete( mvfl_val_t* val );
 
 int main( int argc, char** argv ) {
 
+    /*
     mvfl_val_t* a = mvfl_val_from_int( 2 );
     mvfl_val_t* b = mvfl_val_from_int( 5 );
     mvfl_val_t* c1 = mvfl_val_from_int( 10 );
@@ -41,6 +43,7 @@ int main( int argc, char** argv ) {
 
     sexpr2 = mvfl_sexpr_append( sexpr2, c1 );
     sexpr2 = mvfl_sexpr_append( sexpr2, c2 );
+    sexpr2 = mvfl_sexpr_append( sexpr2, d );
 
     mvfl_sexpr_print( sexpr1, '(', ')' );
     putchar('\n');
@@ -54,6 +57,7 @@ int main( int argc, char** argv ) {
     mvfl_val_t* val = mvfl_val_from_sexpr( sexpr2 );
 
     mvfl_val_println( val );
+
     //
     sexpr1 = mvfl_sexpr_append( sexpr1, val );
     //
@@ -66,12 +70,13 @@ int main( int argc, char** argv ) {
     //
     mvfl_sexpr_delete( sexpr1 );
     mvfl_sexpr_delete( sexpr2 );
+    */
 
-/*
+
     mpc_parser_t* Integer = mpc_new("Integer");
     mpc_parser_t* Float = mpc_new("Float");
     mpc_parser_t* Number = mpc_new("Number");
-    mpc_parser_t* PrefixOperator = mpc_new("PrefixOperator");
+    mpc_parser_t* Symbol = mpc_new("Symbol");
     mpc_parser_t* PrefixExpression = mpc_new("PrefixExpression");
     mpc_parser_t* InfixExpression = mpc_new("InfixExpression");
     mpc_parser_t* Factor = mpc_new("Factor");
@@ -82,7 +87,7 @@ int main( int argc, char** argv ) {
     mpc_parser_t* Mvfl = mpc_new("Mvfl");
 
     mpca_lang_contents( MPCA_LANG_DEFAULT, GRAMMAR_FILE,
-        Integer, Float, Number, PrefixOperator, PrefixExpression, InfixExpression, Factor, Term, Base,
+        Integer, Float, Number, Symbol, PrefixExpression, InfixExpression, Factor, Term, Base,
         Expression, Sexpr,
         Mvfl
     );
@@ -108,12 +113,13 @@ int main( int argc, char** argv ) {
         mpc_result_t parsed;
         if ( mpc_parse( "<stdin>", line, Mvfl, &parsed ) ) {
 
-            // mvfl_val_t result = eval_arithmetic_expr( parsed.output );
-            mvfl_val_t* val = mvfl_val_read( parsed.output );
-            // mvfl_val_println( val );
-
             printf("Parse tree:\n");
             mpc_ast_print( parsed.output );
+
+             // mvfl_val_t result = eval_arithmetic_expr( parsed.output );
+            mvfl_val_t* val = mvfl_val_read( parsed.output );
+            mvfl_val_println( val );
+
             mpc_ast_delete( parsed.output );
 
         }
@@ -129,11 +135,12 @@ int main( int argc, char** argv ) {
     }
 
     mpc_cleanup( 12,
-        Integer, Float, Number, PrefixOperator, PrefixExpression, InfixExpression, Factor, Term, Base,
+        Integer, Float, Number, Symbol, PrefixExpression, InfixExpression, Factor, Term, Base,
         Expression, Sexpr,
         Mvfl
     );
-*/
+
     return 0;
 
 }
+

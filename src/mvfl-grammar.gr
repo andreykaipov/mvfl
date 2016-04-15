@@ -23,20 +23,20 @@ Base : <Number>
      | '(' <Expression> ')'
      ;
 
-PrefixOperator : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
+Symbol : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
                ;
 
-PrefixExpression : <PrefixOperator> <Term>+
+PrefixExpression : <Symbol> <Term>+
                  ;
 
 Expression : <InfixExpression>
-           | <PrefixExpression>
+           | <Symbol>
            | <Sexpr>
            ;
 
 Sexpr : '(' <Expression>* ')'
       ;
 
-Mvfl : /^/ <Expression> /$/ ;
+Mvfl : /^/ <Expression>* /$/ ;
 
 

@@ -44,7 +44,6 @@ mvfl_val_t* mvfl_val_from_symbol( mvfl_symbol_t sym ) {
     mvfl_val_t* value = malloc( sizeof(mvfl_val_t) );
     value->type = MVFL_SYMBOL;
     value->manifestation.symbol = sym;
-    // strcpy( value->manifestation.error, sym );
     return value;
 
 }
@@ -109,16 +108,18 @@ mvfl_sexpr_t mvfl_init_sexpr( void ) {
     mvfl_sexpr_t sexpr;
     sexpr.count = 0;
     sexpr.first = NULL;
+    sexpr.last = NULL;
     return sexpr;
 
 }
 
-// Creates a lonely cons cell with a pointer to a value, and no next.
+// Creates a lonely cons cell with a pointer to a value, and no next nor previous.
 mvfl_cons_cell_t* mvfl_cons_cell( mvfl_val_t* value ) {
 
     mvfl_cons_cell_t* cons_cell = malloc( sizeof(mvfl_cons_cell_t) );
     cons_cell->value = value;
     cons_cell->next = NULL;
+    cons_cell->prev = NULL;
     return cons_cell;
 
 }
@@ -129,7 +130,7 @@ mvfl_cons_cell_t* mvfl_cons_cell( mvfl_val_t* value ) {
 // Also, be careful to NOT add a MVFL value that was made from THIS S-Expr.
 // Doing this will cause an infinite loop of printing because of pointer mumbo-jumbo.
 mvfl_sexpr_t mvfl_sexpr_append( mvfl_sexpr_t sexpr, mvfl_val_t* val ) {
-
+    /*
     if ( sexpr.count == 0 ) {
         sexpr.first = mvfl_cons_cell( val );
     }
@@ -140,8 +141,59 @@ mvfl_sexpr_t mvfl_sexpr_append( mvfl_sexpr_t sexpr, mvfl_val_t* val ) {
         }
         cell->next = mvfl_cons_cell( val );
     }
+    */
+    if ( sexpr.count == 0 ) {
+        sexpr.first = sexpr.last = mvfl_cons_cell( val );
+    }
+    else {
+        mvfl_cons_cell_t* cell = mvfl_cons_cell( val );
+        cell->prev = sexpr.last;
+        sexpr.last->next = cell;
+        sexpr.last = cell;
+    }
 
     sexpr.count += 1;
+    return sexpr;
+
+}
+
+// Inserts an MVFL value into the index-th position of an S-Expression.
+// In other words, finds the index-th element in an S-Expression, and inserts
+// our new element BEFORE it, shifting subsequent elements to the right by one.
+mvfl_sexpr_t mvfl_sexpr_insert( mvfl_sexpr_t sexpr, mvfl_val_t* val, int index ) {
+
+    mvfl_cons_cell_t* cell = mvfl_cons_cell( val );
+    
+    if ( index == 0 ) {
+
+        sexpr.first->prev = cell;
+
+        cell->next = sexpr.first;
+
+        sexpr.first = cell;
+
+    }
+    else {
+        
+        mvfl_cons_cell_t* current = sexpr.first;
+
+        int i;
+        for ( i = 0; i < index; i++ ) {
+            current = current->next;
+        }
+
+        // Connect new cell in-between existing cells.
+        cell->prev = current->prev;
+        cell->next = current;
+
+        // Make the existing cells point to the new cell.
+        current->prev->next = cell;
+        current->prev = cell;
+
+    }
+
+    sexpr.count += 1;
+
     return sexpr;
 
 }
@@ -195,33 +247,49 @@ mvfl_val_t* mvfl_val_read_float( mpc_ast_t* tree ) {
                            : mvfl_val_from_error( "Invalid number." );
 }
 
+mvfl_val_t* mvfl_val_read_sym( mpc_ast_t* tree ) {
+    return mvfl_val_from_symbol( tree->contents );
+}
+
 mvfl_val_t* mvfl_val_read( mpc_ast_t* tree ) {
-    if ( strstr( tree->tag, "Integer" ) ) {
-        return mvfl_val_read_int( tree );
-    }
-    if ( strstr( tree->tag, "Float" ) ) {
-        return mvfl_val_read_float( tree );
-    }
-    /* If root (>) or sexpr then create empty list */
+
+    if ( strstr(tree->tag, "Integer") ) { return mvfl_val_read_int( tree ); }
+    if ( strstr(tree->tag, "Float") ) { return mvfl_val_read_float( tree ); }
+    if ( strstr(tree->tag, "Symbol" ) ) { return mvfl_val_read_sym( tree ); }
+    // if ( *tree->contents == '+' ) { return mvfl_val_read_sym( tree ); }
+    //printf("HELLO\n");
+
+    /* If root (>) or sexpr then create an empty sexpr. */
     mvfl_sexpr_t sexpr;
-    if (strcmp(tree->tag, ">") == 0) { sexpr = mvfl_init_sexpr(); }
-    if (strstr(tree->tag, "Sexpr"))  { sexpr = mvfl_init_sexpr(); }
+    if ( strcmp(tree->tag, ">") == 0 ) { sexpr = mvfl_init_sexpr(); }
+    if ( strstr(tree->tag, "Sexpr") ) { sexpr = mvfl_init_sexpr(); }
+    if ( strstr(tree->tag, "Base") ) { sexpr = mvfl_init_sexpr(); }
+    if ( strstr(tree->tag, "InfixExpression") ) { sexpr = mvfl_init_sexpr(); }
+    if ( strstr(tree->tag, "Factor") ) { sexpr = mvfl_init_sexpr(); }
 
     /* Fill this list with any valid expression contained within */
     int i;
-    for (i = 0; i < tree->children_num; i++) {
+    for ( i = 0; i < tree->children_num; i++ ) {
         if (strcmp(tree->children[i]->contents, "(") == 0) { continue; }
         if (strcmp(tree->children[i]->contents, ")") == 0) { continue; }
         if (strcmp(tree->children[i]->contents, "}") == 0) { continue; }
         if (strcmp(tree->children[i]->contents, "{") == 0) { continue; }
         if (strcmp(tree->children[i]->tag,  "regex") == 0) { continue; }
-        sexpr = mvfl_sexpr_append(sexpr, mvfl_val_read(tree->children[i]));
+        if ( *tree->children[i]->contents == '+' || *tree->children[i]->contents == '*') {
+            if ( ! sexpr.first->value->type == MVFL_SYMBOL ) {
+                sexpr = mvfl_sexpr_insert(sexpr, mvfl_val_read_sym(tree->children[i]), sexpr.count-1);
+            }
+            else 
+            sexpr = mvfl_sexpr_append(sexpr, mvfl_val_read(tree->children[i + 1]));
+            i++;
+        }
+        else {
+            sexpr = mvfl_sexpr_append(sexpr, mvfl_val_read(tree->children[i]));
+        }
     }
 
-        printf("hellooooOO");
     return mvfl_val_from_sexpr( sexpr );
 }
-
 
 /*
 mvfl_val_t eval_op( mvfl_val_t v, char* op, mvfl_val_t w ) {
