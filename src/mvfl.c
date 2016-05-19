@@ -251,41 +251,101 @@ mvfl_val_t* mvfl_val_read_sym( mpc_ast_t* tree ) {
     return mvfl_val_from_symbol( tree->contents );
 }
 
+mvfl_val_t* mvfl_val_read( mpc_ast_t* tree );
+mvfl_sexpr_t mvfl_infix_to_prefix( mpc_ast_t* tree );
+
+mvfl_sexpr_t mvfl_infix_to_prefix( mpc_ast_t* tree ) {
+
+
+    // sexpr = mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[1] ) );
+    
+    int i = 1;
+
+    mvfl_sexpr_t sexpr = mvfl_init_sexpr();
+
+    sexpr = mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[1] ) );
+    sexpr = mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[0] ) );
+    sexpr = mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[2] ) );
+
+    for ( int i = 3; i < tree->children_num; i += 2 ) {
+
+        mvfl_sexpr_t sexpr2 = mvfl_init_sexpr();
+        sexpr2 = mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i] ) );
+        sexpr2 = mvfl_sexpr_append( sexpr2, mvfl_val_from_sexpr( sexpr ) );
+        sexpr2 = mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i+1] ) );
+        
+        sexpr = sexpr2;
+        
+    }
+
+    return sexpr;
+
+}
+
 mvfl_val_t* mvfl_val_read( mpc_ast_t* tree ) {
 
-    if ( strstr(tree->tag, "Integer") ) { return mvfl_val_read_int( tree ); }
-    if ( strstr(tree->tag, "Float") ) { return mvfl_val_read_float( tree ); }
-    if ( strstr(tree->tag, "Symbol" ) ) { return mvfl_val_read_sym( tree ); }
-    // if ( *tree->contents == '+' ) { return mvfl_val_read_sym( tree ); }
-    //printf("HELLO\n");
+    char* tag = tree->tag;
+
+    if ( strstr(tag, "Integer") ) { return mvfl_val_read_int( tree ); }
+    if ( strstr(tag, "Float") ) { return mvfl_val_read_float( tree ); }
+    if ( strstr(tag, "Symbol") ) { return mvfl_val_read_sym( tree ); }
+    if ( strstr(tag, "PlusOp") ) { return mvfl_val_read_sym( tree ); }
+    if ( strstr(tag, "MultOp") ) { return mvfl_val_read_sym( tree ); }
+    if ( strstr(tag, "ExpnOp") ) { return mvfl_val_read_sym( tree ); }
+
+    if ( strstr(tag, "InfixExpr") ) { return mvfl_val_from_sexpr(mvfl_infix_to_prefix(tree)); }
+    if ( strstr(tag, "Base") ) { return mvfl_val_from_sexpr(mvfl_infix_to_prefix(tree)); }
+    if ( strstr(tag, "Term") ) { return mvfl_val_from_sexpr(mvfl_infix_to_prefix(tree)); }
+    if ( strstr(tag, "Factor") ) { return mvfl_val_from_sexpr(mvfl_infix_to_prefix(tree)); }
 
     /* If root (>) or sexpr then create an empty sexpr. */
     mvfl_sexpr_t sexpr;
-    if ( strcmp(tree->tag, ">") == 0 ) { sexpr = mvfl_init_sexpr(); }
-    if ( strstr(tree->tag, "Sexpr") ) { sexpr = mvfl_init_sexpr(); }
-    if ( strstr(tree->tag, "Base") ) { sexpr = mvfl_init_sexpr(); }
-    if ( strstr(tree->tag, "InfixExpression") ) { sexpr = mvfl_init_sexpr(); }
-    if ( strstr(tree->tag, "Factor") ) { sexpr = mvfl_init_sexpr(); }
+    if ( strcmp(tag, ">") == 0 ) { sexpr = mvfl_init_sexpr(); }
+    if ( strstr(tag, "Sexpr") ) { sexpr = mvfl_init_sexpr(); }
+
 
     /* Fill this list with any valid expression contained within */
     int i;
     for ( i = 0; i < tree->children_num; i++ ) {
-        if (strcmp(tree->children[i]->contents, "(") == 0) { continue; }
-        if (strcmp(tree->children[i]->contents, ")") == 0) { continue; }
-        if (strcmp(tree->children[i]->contents, "}") == 0) { continue; }
-        if (strcmp(tree->children[i]->contents, "{") == 0) { continue; }
-        if (strcmp(tree->children[i]->tag,  "regex") == 0) { continue; }
-        if ( *tree->children[i]->contents == '+' || *tree->children[i]->contents == '*') {
-            if ( ! sexpr.first->value->type == MVFL_SYMBOL ) {
-                sexpr = mvfl_sexpr_insert(sexpr, mvfl_val_read_sym(tree->children[i]), sexpr.count-1);
+
+        mpc_ast_t* child = tree->children[i];
+
+        if ( strcmp(child->contents, "(") == 0 ) { continue; }
+        if ( strcmp(child->contents, ")") == 0 ) { continue; }
+        if ( strcmp(child->contents, "{") == 0 ) { continue; }
+        if ( strcmp(child->contents, "}") == 0 ) { continue; }
+        if ( strcmp(child->tag, "regex") == 0 ) { continue; }
+
+/*
+        if ( strstr(child->tag, "PlusOp") ||
+             strstr(child->tag, "MultOp") ||
+             strstr(child->tag, "ExpnOp") ) {
+
+            if ( sexpr.first->value->type == MVFL_SYMBOL ) {
+                //if ( strcmp(sexpr.first->value->manifestation.symbol, child->contents) == 0 ) {
+                    continue;
+               // }
+               // else {
+               //     mvfl_sexpr_t sexpr2 = mvfl_init_sexpr();
+               //     sexpr2 = mvfl_sexpr_append( sexpr2, mvfl_val_read( child ) );
+               //    sexpr2 = mvfl_sexpr_append( sexpr2, mvfl_val_read( sexpr ) );
+               //  }
             }
-            else 
-            sexpr = mvfl_sexpr_append(sexpr, mvfl_val_read(tree->children[i + 1]));
-            i++;
+            else {
+                // Prepend to the sexpr.
+                sexpr = mvfl_sexpr_insert( sexpr, mvfl_val_read_sym( child ), 0 );
+            }
+
         }
-        else {
-            sexpr = mvfl_sexpr_append(sexpr, mvfl_val_read(tree->children[i]));
-        }
+
+            //if ( ! sexpr.first->value->type == MVFL_SYMBOL ) {
+//            }
+//            eklse 
+//            sexpr = mvfl_sexpr_append(sexpr, mvfl_val_read(tree->children[i + 1]));
+ */
+       //else {
+            sexpr = mvfl_sexpr_append( sexpr, mvfl_val_read( child ) );
+        //}
     }
 
     return mvfl_val_from_sexpr( sexpr );

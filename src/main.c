@@ -77,18 +77,21 @@ int main( int argc, char** argv ) {
     mpc_parser_t* Float = mpc_new("Float");
     mpc_parser_t* Number = mpc_new("Number");
     mpc_parser_t* Symbol = mpc_new("Symbol");
-    mpc_parser_t* PrefixExpression = mpc_new("PrefixExpression");
-    mpc_parser_t* InfixExpression = mpc_new("InfixExpression");
+    mpc_parser_t* PlusOp = mpc_new("PlusOp");
+    mpc_parser_t* MultOp = mpc_new("MultOp");
+    mpc_parser_t* ExpnOp = mpc_new("ExpnOp");
+    mpc_parser_t* InfixExpr = mpc_new("InfixExpr");
+    mpc_parser_t* PrefixExpr = mpc_new("PrefixExpr");
     mpc_parser_t* Factor = mpc_new("Factor");
     mpc_parser_t* Term = mpc_new("Term");
     mpc_parser_t* Base = mpc_new("Base");
-    mpc_parser_t* Expression = mpc_new("Expression");
+    mpc_parser_t* Expr = mpc_new("Expr");
     mpc_parser_t* Sexpr = mpc_new("Sexpr");
     mpc_parser_t* Mvfl = mpc_new("Mvfl");
 
     mpca_lang_contents( MPCA_LANG_DEFAULT, GRAMMAR_FILE,
-        Integer, Float, Number, Symbol, PrefixExpression, InfixExpression, Factor, Term, Base,
-        Expression, Sexpr,
+        Integer, Float, Number, PlusOp, MultOp, ExpnOp, Symbol,
+        InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr,
         Mvfl
     );
 
@@ -134,9 +137,9 @@ int main( int argc, char** argv ) {
 
     }
 
-    mpc_cleanup( 12,
-        Integer, Float, Number, Symbol, PrefixExpression, InfixExpression, Factor, Term, Base,
-        Expression, Sexpr,
+    mpc_cleanup( 15,
+        Integer, Float, Number, PlusOp, MultOp, ExpnOp, Symbol,
+        InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr,
         Mvfl
     );
 

@@ -9,34 +9,46 @@ Number : <Float>
        | <Integer>
        ;
 
-InfixExpression : <Factor> ( ('+'|'-') <Factor> )*
-                ;
-
-Factor : <Term> ( ('*'|'/'|'%') <Term> )*
+PlusOp : '+'
+       | '-'
        ;
 
-Term : <Base> ('^' <Term>)?
-     | ('+'|'-') <Term>
+MultOp : '*'
+       | '/'
+       | '%'
+       ;
+
+ExpnOp : '^'
+       ;
+
+Symbol : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
+       ;
+
+InfixExpr : <Factor> ( <PlusOp> <Factor> )*
+          ;
+
+Factor : <Term> ( <MultOp> <Term> )*
+       ;
+
+Term : <Base> ( <ExpnOp> <Term> )?
      ;
 
 Base : <Number>
-     | '(' <Expression> ')'
+     | '(' <Expr> ')'
+     | <PlusOp> <Term>
      ;
 
-Symbol : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
-               ;
-
-PrefixExpression : <Symbol> <Term>+
-                 ;
-
-Expression : <InfixExpression>
-           | <Symbol>
-           | <Sexpr>
+PrefixExpr : <Symbol> <Term>+
            ;
 
-Sexpr : '(' <Expression>* ')'
+Expr : <InfixExpr>
+     | <Symbol>
+     | <Sexpr>
+     ;
+
+Sexpr : '(' <Expr>* ')'
       ;
 
-Mvfl : /^/ <Expression>* /$/ ;
+Mvfl : /^/ <Expr>* /$/ ;
 
 
