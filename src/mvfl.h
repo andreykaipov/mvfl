@@ -6,7 +6,7 @@
 typedef long mvfl_int_t;
 typedef double mvfl_float_t;
 
-// The errors and symbols are strings.
+// MVFL errors and symbols are strings.
 typedef char* mvfl_error_t;
 typedef char* mvfl_symbol_t;
 
@@ -49,12 +49,13 @@ union mvfl_number_t {
     mvfl_float_t as_float;
 };
 
-// The manifestation of our values can either be error codes or numbers.
+// The manifestation of our values are either numbers, symbols or
+// errors, or a pointer to an S-Expression.
 union mvfl_manifestation_t {
     mvfl_number_t num;
-    mvfl_sexpr_t sexpr;
     mvfl_symbol_t symbol;
     mvfl_error_t error;
+    mvfl_sexpr_t * sexpr;
 };
 
 // Our values have a type, and a manifestation.
@@ -63,5 +64,20 @@ struct mvfl_val_t {
     mvfl_manifestation_t manifestation;
 };
 
-void mvfl_sexpr_print( mvfl_sexpr_t sexp, char open, char close );
+mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast );
+mvfl_val_t* mvfl_val_read( mpc_ast_t* tree );
+
+mvfl_val_t* mvfl_val_from_int( mvfl_int_t k );
+mvfl_val_t* mvfl_val_from_float( mvfl_float_t x );
+mvfl_val_t* mvfl_val_from_symbol( mvfl_symbol_t sym );
+mvfl_val_t* mvfl_val_from_sexpr( mvfl_sexpr_t* sexpr );
+void mvfl_val_delete( mvfl_val_t* val );
+
 void mvfl_val_print( mvfl_val_t* value );
+void mvfl_val_println( mvfl_val_t* value );
+
+mvfl_sexpr_t* mvfl_sexpr_init( void );
+void mvfl_sexpr_append( mvfl_sexpr_t* sexpr, mvfl_val_t* val );
+mvfl_sexpr_t* mvfl_sexpr_clone( mvfl_sexpr_t* sexpr );
+void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr );
+void mvfl_sexpr_print( mvfl_sexpr_t* sexpr, char open, char close );

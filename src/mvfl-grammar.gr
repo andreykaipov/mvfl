@@ -12,16 +12,16 @@ Number : <Float>
 PlusOp : '+'
        | '-'
        ;
-
 MultOp : '*'
        | '/'
        | '%'
        ;
-
 ExpnOp : '^'
        ;
-
-Symbol : "add" | "sub" | "mul" | "div" | "min" | "max" | "pow"
+Symbol : "add" | "sub" | <PlusOp>
+       | "mul" | "prod" | "div" | <MultOp>
+       | "pow" | <ExpnOp>
+       | "min" | "max"
        ;
 
 InfixExpr : <Factor> ( <PlusOp> <Factor> )*
@@ -34,21 +34,23 @@ Term : <Base> ( <ExpnOp> <Term> )?
      ;
 
 Base : <Number>
-     | '(' <Expr> ')'
      | <PlusOp> <Term>
+     | <PrefixExpr>
+     | '(' <InfixExpr> ')'
      ;
 
-PrefixExpr : <Symbol> <Term>+
+PrefixExpr : <Symbol> <Factor>+
            ;
 
 Expr : <InfixExpr>
+     | <PrefixExpr>
      | <Symbol>
-     | <Sexpr>
      ;
 
-Sexpr : '(' <Expr>* ')'
+Sexpr : <Expr>*
+      | '(' <Sexpr> ')'
       ;
 
-Mvfl : /^/ <Expr>* /$/ ;
+Mvfl : /^/ <Sexpr> /$/ ;
 
 

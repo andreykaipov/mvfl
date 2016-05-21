@@ -8,70 +8,64 @@
 static char* prompt = "mvfl> ";
 static char* prompt_exit = ":exit";
 
-void mvfl_val_println( mvfl_val_t* value );
 mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast );
 mvfl_val_t* mvfl_val_read( mpc_ast_t* tree );
 
-mvfl_sexpr_t mvfl_init_sexpr( void );
-mvfl_val_t* mvfl_val_from_int( mvfl_int_t i );
-mvfl_val_t* mvfl_val_from_float( mvfl_float_t i );
-mvfl_sexpr_t mvfl_sexpr_append( mvfl_sexpr_t sexpr, mvfl_val_t* val );
-void mvfl_sexpr_print( mvfl_sexpr_t sexpr, char open, char close );
-void mvfl_sexpr_delete( mvfl_sexpr_t sexpr );
-mvfl_val_t* mvfl_val_from_sexpr( mvfl_sexpr_t sexpr );
-void mvfl_val_delete( mvfl_val_t* val );
-
 int main( int argc, char** argv ) {
-
-    /*
-    mvfl_val_t* a = mvfl_val_from_int( 2 );
-    mvfl_val_t* b = mvfl_val_from_int( 5 );
+/*
+    mvfl_val_t* a = mvfl_val_from_symbol( "T" );
+    mvfl_val_t* b = mvfl_val_from_symbol( "5" );
     mvfl_val_t* c1 = mvfl_val_from_int( 10 );
     mvfl_val_t* c2 = mvfl_val_from_int( 10 );
     mvfl_val_t* d = mvfl_val_from_float( 13.3 );
 
-    mvfl_sexpr_t sexpr1 = mvfl_init_sexpr();
-    mvfl_sexpr_t sexpr2 = mvfl_init_sexpr();
+    mvfl_sexpr_t* sexpr1 = mvfl_sexpr_init();
+    mvfl_sexpr_t* sexpr2 = mvfl_sexpr_init();
+
+    mvfl_sexpr_print( sexpr1, '(', ')' );
+    putchar('\n');
+    mvfl_sexpr_print( sexpr2, '(', ')' );
+    putchar('\n');
+   
+    mvfl_sexpr_append( sexpr1, a );
+    mvfl_sexpr_append( sexpr1, b );
+    mvfl_sexpr_append( sexpr2, c1 );
+    mvfl_sexpr_append( sexpr2, c2 );
+    mvfl_sexpr_append( sexpr2, d );
 
     mvfl_sexpr_print( sexpr1, '(', ')' );
     putchar('\n');
     mvfl_sexpr_print( sexpr2, '(', ')' );
     putchar('\n');
 
-    sexpr1 = mvfl_sexpr_append( sexpr1, a );
-    sexpr1 = mvfl_sexpr_append( sexpr1, b );
+    printf( "2nd element of first sexpr is " );
+    mvfl_val_println( sexpr1->first->next->value );
+    printf( "2nd element of second sexpr is " );
+    mvfl_val_println( sexpr2->first->next->value );
 
-    sexpr2 = mvfl_sexpr_append( sexpr2, c1 );
-    sexpr2 = mvfl_sexpr_append( sexpr2, c2 );
-    sexpr2 = mvfl_sexpr_append( sexpr2, d );
+    printf( "Count of first sexpr is %i\n", sexpr1->count );
+    printf( "Count of second sexpr is %i\n", sexpr2->count );
+
+    mvfl_sexpr_t* cloned = mvfl_sexpr_clone( sexpr1 );
+    mvfl_val_t* val = mvfl_val_from_sexpr( cloned );
+
+    mvfl_sexpr_append( sexpr1, val );
 
     mvfl_sexpr_print( sexpr1, '(', ')' );
     putchar('\n');
-    mvfl_sexpr_print( sexpr2, '(', ')' );
-    putchar('\n');
 
-    // printf( "2nd element is " );
-    // mvfl_val_println( sexpr.first->next->value );
-    // printf( "Count is %i\n", sexpr.count );
+    printf( "Count of first sexpr is now %i\n", sexpr1->count );
 
-    mvfl_val_t* val = mvfl_val_from_sexpr( sexpr2 );
-
-    mvfl_val_println( val );
-
-    //
-    sexpr1 = mvfl_sexpr_append( sexpr1, val );
-    //
-    // printf( "Count is %i\n", sexpr.count );
+    a->manifestation.symbol = "@";
+    sexpr1->first->next->next->value->manifestation.sexpr->first->value->manifestation.symbol = "FFF";
+    sexpr1->last->value->manifestation.sexpr->first->value->manifestation.symbol = "PPP";
 
     mvfl_sexpr_print( sexpr1, '(', ')' );
-    // mvfl_val_println( val );
-    //
-    //
-    //
+
+    mvfl_sexpr_delete( cloned );
     mvfl_sexpr_delete( sexpr1 );
     mvfl_sexpr_delete( sexpr2 );
     */
-
 
     mpc_parser_t* Integer = mpc_new("Integer");
     mpc_parser_t* Float = mpc_new("Float");
@@ -122,6 +116,8 @@ int main( int argc, char** argv ) {
              // mvfl_val_t result = eval_arithmetic_expr( parsed.output );
             mvfl_val_t* val = mvfl_val_read( parsed.output );
             mvfl_val_println( val );
+
+            mvfl_val_delete( val );
 
             mpc_ast_delete( parsed.output );
 
