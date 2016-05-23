@@ -10,9 +10,11 @@ static char* prompt_exit = ":exit";
 
 mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast );
 mvfl_val_t* mvfl_val_read( mpc_ast_t* tree );
+mvfl_val_t* mvfl_eval_val( mvfl_val_t* value );
 
 int main( int argc, char** argv ) {
-/*
+
+/*    
     mvfl_val_t* a = mvfl_val_from_symbol( "T" );
     mvfl_val_t* b = mvfl_val_from_symbol( "5" );
     mvfl_val_t* c1 = mvfl_val_from_int( 10 );
@@ -46,27 +48,19 @@ int main( int argc, char** argv ) {
     printf( "Count of first sexpr is %i\n", sexpr1->count );
     printf( "Count of second sexpr is %i\n", sexpr2->count );
 
-    mvfl_sexpr_t* cloned = mvfl_sexpr_clone( sexpr1 );
-    mvfl_val_t* val = mvfl_val_from_sexpr( cloned );
+    printf( "Popping 2nd element of 2nd sexpr... " );
+    mvfl_val_t* popped = mvfl_sexpr_pop( sexpr2, 2 );
+    mvfl_val_println( popped );
 
-    mvfl_sexpr_append( sexpr1, val );
+    printf( "Count of first sexpr is now %i\n", sexpr2->count );
+    mvfl_sexpr_print( sexpr2, '(', ')' );
 
-    mvfl_sexpr_print( sexpr1, '(', ')' );
-    putchar('\n');
-
-    printf( "Count of first sexpr is now %i\n", sexpr1->count );
-
-    a->manifestation.symbol = "@";
-    sexpr1->first->next->next->value->manifestation.sexpr->first->value->manifestation.symbol = "FFF";
-    sexpr1->last->value->manifestation.sexpr->first->value->manifestation.symbol = "PPP";
-
-    mvfl_sexpr_print( sexpr1, '(', ')' );
-
-    mvfl_sexpr_delete( cloned );
     mvfl_sexpr_delete( sexpr1 );
     mvfl_sexpr_delete( sexpr2 );
-    */
 
+    mvfl_val_delete( popped );
+ */   
+   
     mpc_parser_t* Integer = mpc_new("Integer");
     mpc_parser_t* Float = mpc_new("Float");
     mpc_parser_t* Number = mpc_new("Number");
@@ -113,11 +107,20 @@ int main( int argc, char** argv ) {
             printf("Parse tree:\n");
             mpc_ast_print( parsed.output );
 
-             // mvfl_val_t result = eval_arithmetic_expr( parsed.output );
             mvfl_val_t* val = mvfl_val_read( parsed.output );
+            printf("Parse tree as S-Expression:\n");
             mvfl_val_println( val );
 
-            mvfl_val_delete( val );
+            mvfl_val_t* result = mvfl_eval_val( val );
+            printf("Evaluated output: ");
+            mvfl_val_println( result );
+
+
+
+            mvfl_val_delete( result );
+            //mvfl_val_delete( val );
+            
+
 
             mpc_ast_delete( parsed.output );
 

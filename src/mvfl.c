@@ -416,11 +416,13 @@ mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr );
 
 mvfl_val_t* mvfl_eval_val( mvfl_val_t* value ) {
     
-    switch ( value->type ) {
-        case MVFL_SEXPR:
-            return mvfl_eval_sexpr( value->manifestation.sexpr );
-        default:
-            return mvfl_val_clone( value );
+    if ( value->type == MVFL_SEXPR ) {
+        mvfl_sexpr_t* sexpr = value->manifestation.sexpr;
+        free( value );
+        return mvfl_eval_sexpr( sexpr );
+    }
+    else {
+        return value;
     }
 
 }
@@ -430,28 +432,34 @@ mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr ) {
     mvfl_cons_cell_t* cell = sexpr->first;
     while ( cell != NULL ) {
         mvfl_val_t* evaluated = mvfl_eval_val( cell->value );
-        mvfl_val_delete( cell->value );
+ //       mvfl_val_delete( cell->value );
         cell->value = evaluated;
         cell = cell->next;
     }
     
+    // We look at the first value of an Sexpr to decide what to do.
+
+    // If the Sexpr is now empty,  
     if ( sexpr->count == 1 ) {
-        return sexpr->first->value;
+        mvfl_val_t* first = mvfl_sexpr_pop( sexpr, 0 );
+        mvfl_sexpr_delete( sexpr );
+        return mvfl_eval_val( first );
     }
     else {
+        fprintf(stderr,"SHSHHSS\n");
         mvfl_val_t* first = mvfl_sexpr_pop( sexpr, 0 );
+        // Otherwise, ensure first value is a symbol.
         if ( first->type != MVFL_SYMBOL ) {
             mvfl_val_delete( first );
-            //mvfl_sexpr_delete( sexpr );
+            mvfl_sexpr_delete( sexpr );
             return mvfl_val_from_error("No operator found");
         }
         else {
             char* operand = first->manifestation.symbol;
+            mvfl_val_t* result = mvfl_eval_op( operand, sexpr );
             mvfl_val_delete( first );
 
-            mvfl_val_t* result = mvfl_eval_op( operand, sexpr );
-
-            //mvfl_sexpr_delete( sexpr );
+ //           mvfl_sexpr_delete( sexpr );
 
             return result;
         }
@@ -472,28 +480,42 @@ mvfl_val_t* mvfl_eval_op( char* op, mvfl_sexpr_t* sexpr ) {
     }
 
     // Get the first argument.
-    mvfl_val_t* value = mvfl_sexpr_pop( sexpr, 0 );
+    mvfl_val_t* first_arg = mvfl_sexpr_pop( sexpr, 0 );
 
+    // Check unary operators.
+    if ( strcmp(op, "+") == 0 && sexpr->count == 0 ) {
+        // Do nothing.
+    }
     if ( strcmp(op, "-") == 0 && sexpr->count == 0 ) {
-        value->manifestation.num.as_int = - value->manifestation.num.as_int;
+        first_arg->manifestation.num.as_int = - first_arg->manifestation.num.as_int;
     }
 
     while ( sexpr->count > 0 ) {
 
-            fprintf(stderr,":dshsdhs\n");
-        mvfl_val_t* arg = mvfl_sexpr_pop( sexpr, 0 );
+        fprintf(stderr,":dshsdhs\n");
+        mvfl_val_t* next_arg = mvfl_sexpr_pop( sexpr, 0 );
         
-        if ( strcmp(op, "add") == 0 ) {
-            value->manifestation.num.as_int += arg->manifestation.num.as_int;
+        if ( strcmp(op,"add") == 0 || strcmp(op,"sum") == 0 || strcmp(op,"+") == 0 ) {
+            first_arg->manifestation.num.as_int += next_arg->manifestation.num.as_int;
         }
+        if ( strcmp(op,"sub") == 0 || strcmp(op,"diff") == 0 || strcmp(op,"-") == 0 ) {
+            first_arg->manifestation.num.as_int -= next_arg->manifestation.num.as_int;
+        }
+        if ( strcmp(op,"mul") == 0 || strcmp(op,"prod") == 0 || strcmp(op,"*") == 0 ) {
+            first_arg->manifestation.num.as_int *= next_arg->manifestation.num.as_int;
+        }
+        if ( strcmp(op,"div") == 0 || strcmp(op,"/") == 0 ) {
+            first_arg->manifestation.num.as_int /= next_arg->manifestation.num.as_int;
+        } 
 
-        mvfl_val_delete( arg );
+
+        mvfl_val_delete( next_arg );
 
     }
 
- //   mvfl_sexpr_delete( sexpr );
+    mvfl_sexpr_delete( sexpr );
 
-    return value; 
+    return first_arg; 
    /* 
     if ( strcmp(op,"+") == 0 || strcmp(op,"add") == 0 ) { return mvfl_add_intern( v, w ); }
     if ( strcmp(op,"-") == 0 || strcmp(op,"sub") == 0 ) { return mvfl_sub_intern( v, w ); }
