@@ -34,7 +34,7 @@ Term : <Base> ( <ExpnOp> <Term> )?
      ;
 
 Base : <Number>
-     | <PlusOp> <Term>
+     | <PlusOp> <Base>
      | <PrefixExpr>
      | '(' <InfixExpr> ')'
      ;
@@ -42,8 +42,8 @@ Base : <Number>
 PrefixExpr : <Symbol> <Factor>+
            ;
 
-Expr : <InfixExpr>
-     | <PrefixExpr>
+Expr : <PrefixExpr>
+     | <InfixExpr>
      | <Symbol>
      ;
 
