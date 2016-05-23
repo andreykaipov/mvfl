@@ -78,6 +78,7 @@ void mvfl_val_println( mvfl_val_t* value );
 
 mvfl_sexpr_t* mvfl_sexpr_init( void );
 void mvfl_sexpr_append( mvfl_sexpr_t* sexpr, mvfl_val_t* val );
+mvfl_val_t* mvfl_sexpr_pop( mvfl_sexpr_t* sexpr, int index );
 mvfl_sexpr_t* mvfl_sexpr_clone( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_print( mvfl_sexpr_t* sexpr, char open, char close );

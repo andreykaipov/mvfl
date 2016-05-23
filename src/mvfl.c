@@ -17,10 +17,12 @@ void mvfl_val_println( mvfl_val_t* value );
 
 mvfl_sexpr_t* mvfl_sexpr_init( void );
 void mvfl_sexpr_append( mvfl_sexpr_t* sexpr, mvfl_val_t* val );
+mvfl_val_t* mvfl_sexpr_pop( mvfl_sexpr_t* sexpr, int index );
 mvfl_sexpr_t* mvfl_sexpr_clone( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_print( mvfl_sexpr_t* sexpr, char open, char close );
 
+mvfl_val_t* mvfl_eval_op( char* op, mvfl_sexpr_t* sexpr );
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*~~~~~~ MVFL constructors for each MVFL type ~~~~~~*/
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -45,22 +47,22 @@ mvfl_val_t* mvfl_val_from_float( mvfl_float_t x ) {
 
 }
 
-// Creates an MVFL value pointer from an MVFL error message.
-mvfl_val_t* mvfl_val_from_error( mvfl_error_t msg ) {
-
-    mvfl_val_t* value = malloc( sizeof(mvfl_val_t) );
-    value->type = MVFL_ERROR;
-    value->manifestation.error = msg;
-    return value;
-
-}
-
 // Creates an MVFL value pointer from an MVFL symbol.
 mvfl_val_t* mvfl_val_from_symbol( mvfl_symbol_t sym ) {
 
     mvfl_val_t* value = malloc( sizeof(mvfl_val_t) );
     value->type = MVFL_SYMBOL;
     value->manifestation.symbol = sym;
+    return value;
+
+}
+
+// Creates an MVFL value pointer from an MVFL error message.
+mvfl_val_t* mvfl_val_from_error( mvfl_error_t msg ) {
+
+    mvfl_val_t* value = malloc( sizeof(mvfl_val_t) );
+    value->type = MVFL_ERROR;
+    value->manifestation.error = msg;
     return value;
 
 }
@@ -84,6 +86,8 @@ mvfl_val_t* mvfl_val_clone( mvfl_val_t* value ) {
             return mvfl_val_from_float( value->manifestation.num.as_float );
         case MVFL_SYMBOL:
             return mvfl_val_from_symbol( value->manifestation.symbol );
+        case MVFL_ERROR:
+            return mvfl_val_from_error( value->manifestation.error );
         case MVFL_SEXPR:
             return mvfl_val_from_sexpr( value->manifestation.sexpr );
         default:
@@ -104,6 +108,8 @@ void mvfl_val_delete( mvfl_val_t* value ) {
         case MVFL_FLOAT:
             break;
         case MVFL_SYMBOL:
+            break;
+        case MVFL_ERROR:
             break;
         case MVFL_SEXPR:
             mvfl_sexpr_delete( value->manifestation.sexpr );
@@ -129,6 +135,9 @@ void mvfl_val_print( mvfl_val_t* value ) {
             break;
         case MVFL_SYMBOL:
             printf( "%s", value->manifestation.symbol );
+            break;
+        case MVFL_ERROR:
+            printf( "Error! %s", value->manifestation.error );
             break;
         case MVFL_SEXPR:
             mvfl_sexpr_print( value->manifestation.sexpr, '(', ')' );
@@ -214,37 +223,57 @@ mvfl_sexpr_t* mvfl_sexpr_clone( mvfl_sexpr_t* sexpr ) {
 void mvfl_sexpr_insert( mvfl_sexpr_t* sexpr, mvfl_val_t* val, int index ) {
     
     mvfl_cons_cell_t* cell = mvfl_cons_cell( val );
+
     if ( index == 0 ) {
-
         sexpr->first->prev = cell;
-
         cell->next = sexpr->first;
-
         sexpr->first = cell;
-
+    }
+    else if ( index == sexpr->count - 1 ) {
+        mvfl_sexpr_append( sexpr, val );
     }
     else {
-        
         mvfl_cons_cell_t* current = sexpr->first;
+        for ( int i = 0; i < index; i += 1 ) { current = current->next; }
 
-        int i;
-        for ( i = 0; i < index; i++ ) {
-            current = current->next;
-        }
-
-        // Connect new cell in-between existing cells.
+        // Connect new cell in-between two existing cells.
         cell->prev = current->prev;
         cell->next = current;
 
-        // Make the existing cells point to the new cell.
+        // Make the surrounding cells point to the new cell.
         current->prev->next = cell;
         current->prev = cell;
-
     }
 
     sexpr->count += 1;
 
 }
+
+// Pops the index-th MVFL value out of the S-Expression,
+// shifting all subsequent elements to the left by one.
+mvfl_val_t* mvfl_sexpr_pop( mvfl_sexpr_t* sexpr, int index ) {
+
+    // Find the i-th cons cell and adjust its pointers.
+    mvfl_cons_cell_t* current = sexpr->first;
+    for ( int i = 0; i < index; i += 1 ) { current = current->next; }
+    if ( current->prev != NULL ) { current->prev->next = current->next; }
+    if ( current->next != NULL ) { current->next->prev = current->prev; }
+
+    // Fix the ptrs of the sexpr for the edge-cases.
+    if ( index == 0 ) { sexpr->first = sexpr->first->next; }
+    if ( index == sexpr->count - 1 ) { sexpr->last = sexpr->last->prev; }
+
+    // We're removing a cell, so adjust the count.
+    sexpr->count -= 1;
+   
+    // Store the value in a variable to free the cell before returning.
+    mvfl_val_t* popped = current->value;
+    free( current );
+
+    return popped;
+
+}
+
 
 // Prints the constituent cells of an S-Expression, delimited by spaces.
 // The entire S-Expression is enclosed between open and close characters.
@@ -307,14 +336,14 @@ mvfl_sexpr_t* mvfl_prefix_to_sexpr( mpc_ast_t* tree );
 mvfl_sexpr_t* mvfl_infix_to_sexpr( mpc_ast_t* tree ) {
 
     mvfl_sexpr_t* sexpr = mvfl_sexpr_init();
-    mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[1] ) );
+    mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[1] ) ); //symbol
     mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[0] ) );
     mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[2] ) );
 
     for ( int i = 3; i < tree->children_num; i += 2 ) {
 
         mvfl_sexpr_t* sexpr2 = mvfl_sexpr_init();
-        mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i] ) );
+        mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i] ) ); //symbol
         mvfl_sexpr_append( sexpr2, mvfl_val_from_sexpr( sexpr ) );
         mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i+1] ) );
         sexpr = sexpr2;
@@ -376,13 +405,96 @@ mvfl_val_t* mvfl_val_read( mpc_ast_t* tree ) {
     }
 
     fprintf(stderr,"BYE\n");
+    //return mvfl_val_from_sexpr( sexpr )->manifestation.sexpr->first->value;
     return mvfl_val_from_sexpr( sexpr );
+    
 
 }
 
-/*
-mvfl_val_t eval_op( mvfl_val_t v, char* op, mvfl_val_t w ) {
+mvfl_val_t* mvfl_eval_val( mvfl_val_t* value ); 
+mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr );
 
+mvfl_val_t* mvfl_eval_val( mvfl_val_t* value ) {
+    
+    switch ( value->type ) {
+        case MVFL_SEXPR:
+            return mvfl_eval_sexpr( value->manifestation.sexpr );
+        default:
+            return mvfl_val_clone( value );
+    }
+
+}
+
+mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr ) {
+    
+    mvfl_cons_cell_t* cell = sexpr->first;
+    while ( cell != NULL ) {
+        mvfl_val_t* evaluated = mvfl_eval_val( cell->value );
+        mvfl_val_delete( cell->value );
+        cell->value = evaluated;
+        cell = cell->next;
+    }
+    
+    if ( sexpr->count == 1 ) {
+        return sexpr->first->value;
+    }
+    else {
+        mvfl_val_t* first = mvfl_sexpr_pop( sexpr, 0 );
+        if ( first->type != MVFL_SYMBOL ) {
+            mvfl_val_delete( first );
+            //mvfl_sexpr_delete( sexpr );
+            return mvfl_val_from_error("No operator found");
+        }
+        else {
+            char* operand = first->manifestation.symbol;
+            mvfl_val_delete( first );
+
+            mvfl_val_t* result = mvfl_eval_op( operand, sexpr );
+
+            //mvfl_sexpr_delete( sexpr );
+
+            return result;
+        }
+    }
+
+}
+
+mvfl_val_t* mvfl_eval_op( char* op, mvfl_sexpr_t* sexpr ) {
+    
+    mvfl_cons_cell_t* cell = sexpr->first;
+    while ( cell != NULL ) {
+        mvfl_type_t type = cell->value->type;
+        if ( type != MVFL_INTEGER && type != MVFL_FLOAT ) {
+            mvfl_sexpr_delete( sexpr );
+            return mvfl_val_from_error( "Cannot operate on non-number!" );
+        }
+        cell = cell->next;
+    }
+
+    // Get the first argument.
+    mvfl_val_t* value = mvfl_sexpr_pop( sexpr, 0 );
+
+    if ( strcmp(op, "-") == 0 && sexpr->count == 0 ) {
+        value->manifestation.num.as_int = - value->manifestation.num.as_int;
+    }
+
+    while ( sexpr->count > 0 ) {
+
+            fprintf(stderr,":dshsdhs\n");
+        mvfl_val_t* arg = mvfl_sexpr_pop( sexpr, 0 );
+        
+        if ( strcmp(op, "add") == 0 ) {
+            value->manifestation.num.as_int += arg->manifestation.num.as_int;
+        }
+
+        mvfl_val_delete( arg );
+
+    }
+
+ //   mvfl_sexpr_delete( sexpr );
+
+    return value; 
+   /* 
     if ( strcmp(op,"+") == 0 || strcmp(op,"add") == 0 ) { return mvfl_add_intern( v, w ); }
     if ( strcmp(op,"-") == 0 || strcmp(op,"sub") == 0 ) { return mvfl_sub_intern( v, w ); }
     if ( strcmp(op,"*") == 0 || strcmp(op,"mul") == 0 ) { return mvfl_mul_intern( v, w ); }
@@ -392,10 +504,11 @@ mvfl_val_t eval_op( mvfl_val_t v, char* op, mvfl_val_t w ) {
     if ( strcmp(op,"max") == 0 ) { return mvfl_max_intern( v, w ); }
 
     return mvfl_val_from_error( MVFL_ERROR_BAD_OP );
+    */
 
 }
 
-
+/*
 mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast ) {
 
     // If tag contains integer, get the value of its contents.
