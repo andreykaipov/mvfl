@@ -63,7 +63,7 @@ struct mvfl_val_t {
     mvfl_type_t type;
     mvfl_manifestation_t manifestation;
 };
-
+/*
 mvfl_val_t eval_arithmetic_expr( mpc_ast_t* ast );
 mvfl_val_t* mvfl_val_read( mpc_ast_t* tree );
 
@@ -82,3 +82,4 @@ mvfl_val_t* mvfl_sexpr_pop( mvfl_sexpr_t* sexpr, int index );
 mvfl_sexpr_t* mvfl_sexpr_clone( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_print( mvfl_sexpr_t* sexpr, char open, char close );
+*/

@@ -473,60 +473,61 @@ mvfl_val_t* mvfl_eval_op( char* op, mvfl_sexpr_t* sexpr ) {
     while ( cell != NULL ) {
         mvfl_type_t type = cell->value->type;
         if ( type != MVFL_INTEGER && type != MVFL_FLOAT ) {
-            mvfl_sexpr_delete( sexpr );
-            return mvfl_val_from_error( "Cannot operate on non-number!" );
+            if  ( type == MVFL_ERROR ) {
+                mvfl_val_t* error = mvfl_val_clone( cell->value ); 
+                mvfl_sexpr_delete( sexpr );
+                return error;
+            }
+            else {
+                mvfl_sexpr_delete( sexpr );
+                return mvfl_val_from_error( "Cannot operate on non-number!" );
+            }
         }
         cell = cell->next;
     }
 
     // Get the first argument.
-    mvfl_val_t* first_arg = mvfl_sexpr_pop( sexpr, 0 );
+    mvfl_val_t* firstArg = mvfl_sexpr_pop( sexpr, 0 );
 
     // Check unary operators.
     if ( strcmp(op, "+") == 0 && sexpr->count == 0 ) {
         // Do nothing.
     }
     if ( strcmp(op, "-") == 0 && sexpr->count == 0 ) {
-        first_arg->manifestation.num.as_int = - first_arg->manifestation.num.as_int;
+        mvfl_arithmetic_neg_intern( firstArg );
     }
 
     while ( sexpr->count > 0 ) {
 
         fprintf(stderr,":dshsdhs\n");
-        mvfl_val_t* next_arg = mvfl_sexpr_pop( sexpr, 0 );
+        mvfl_val_t* nextArg = mvfl_sexpr_pop( sexpr, 0 );
         
         if ( strcmp(op,"add") == 0 || strcmp(op,"sum") == 0 || strcmp(op,"+") == 0 ) {
-            first_arg->manifestation.num.as_int += next_arg->manifestation.num.as_int;
+            mvfl_arithmetic_add_intern( firstArg, nextArg );
         }
         if ( strcmp(op,"sub") == 0 || strcmp(op,"diff") == 0 || strcmp(op,"-") == 0 ) {
-            first_arg->manifestation.num.as_int -= next_arg->manifestation.num.as_int;
+            mvfl_arithmetic_sub_intern( firstArg, nextArg );
         }
         if ( strcmp(op,"mul") == 0 || strcmp(op,"prod") == 0 || strcmp(op,"*") == 0 ) {
-            first_arg->manifestation.num.as_int *= next_arg->manifestation.num.as_int;
+            mvfl_arithmetic_mul_intern( firstArg, nextArg );
         }
         if ( strcmp(op,"div") == 0 || strcmp(op,"/") == 0 ) {
-            first_arg->manifestation.num.as_int /= next_arg->manifestation.num.as_int;
+            mvfl_arithmetic_div_intern( firstArg, nextArg );
         } 
+        if ( strcmp(op,"min") == 0 ) {
+            mvfl_arithmetic_min_intern( firstArg, nextArg );
+        }
+        if ( strcmp(op,"max") == 0 ) {
+            mvfl_arithmetic_max_intern( firstArg, nextArg );
+        }
 
-
-        mvfl_val_delete( next_arg );
+        mvfl_val_delete( nextArg );
 
     }
 
     mvfl_sexpr_delete( sexpr );
 
-    return first_arg; 
-   /* 
-    if ( strcmp(op,"+") == 0 || strcmp(op,"add") == 0 ) { return mvfl_add_intern( v, w ); }
-    if ( strcmp(op,"-") == 0 || strcmp(op,"sub") == 0 ) { return mvfl_sub_intern( v, w ); }
-    if ( strcmp(op,"*") == 0 || strcmp(op,"mul") == 0 ) { return mvfl_mul_intern( v, w ); }
-    if ( strcmp(op,"/") == 0 || strcmp(op,"div") == 0 ) { return mvfl_div_intern( v, w ); }
-    if ( strcmp(op,"%") == 0 ) { return mvfl_mod_intern( v, w ); }
-    if ( strcmp(op,"min") == 0 ) { return mvfl_min_intern( v, w ); }
-    if ( strcmp(op,"max") == 0 ) { return mvfl_max_intern( v, w ); }
-
-    return mvfl_val_from_error( MVFL_ERROR_BAD_OP );
-    */
+    return firstArg; 
 
 }
 

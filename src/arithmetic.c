@@ -1,125 +1,194 @@
 
-/*
 #include "mvfl.h"
 
-mvfl_val_t mvfl_val_from_int( mvfl_int_t );
-mvfl_val_t mvfl_val_from_float( mvfl_float_t );
-mvfl_val_t mvfl_val_error( mvfl_err_code_t );
+mvfl_val_t* mvfl_val_from_error( mvfl_error_t msg );
 
-mvfl_val_t mvfl_add_intern( mvfl_val_t v, mvfl_val_t w ) {
+void mvfl_arithmetic_neg_intern( mvfl_val_t* firstArg ) {
 
-    switch ( v.type ) {
+    switch ( firstArg->type ) {
         case MVFL_INTEGER:
-            switch ( w.type ) {
-                case MVFL_INTEGER:
-                    return mvfl_val_from_int( v.manifestation.num.as_int + w.manifestation.num.as_int );
-                case MVFL_FLOAT:
-                    return mvfl_val_from_float( v.manifestation.num.as_int + w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
-            }
+            firstArg->manifestation.num.as_int = - firstArg->manifestation.num.as_int;
+            break;
         case MVFL_FLOAT:
-            switch ( w.type ) {
-                case MVFL_INTEGER:
-                    return mvfl_val_from_float( v.manifestation.num.as_float + w.manifestation.num.as_int );
-                case MVFL_FLOAT:
-                    return mvfl_val_from_float( v.manifestation.num.as_float + w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
-            }
-        default: // Error - propogate it up.
-            return v;
+            firstArg->manifestation.num.as_float = - firstArg->manifestation.num.as_float;
+            break;
+        default:
+            break;
     }
 
 }
 
-mvfl_val_t mvfl_sub_intern( mvfl_val_t v, mvfl_val_t w ) {
+void mvfl_arithmetic_add_intern( mvfl_val_t* firstArg, mvfl_val_t* nextArg ) {
 
-    switch ( v.type ) {
+    switch ( firstArg->type ) {
         case MVFL_INTEGER:
-            switch ( w.type ) {
+            switch( nextArg->type ) {
                 case MVFL_INTEGER:
-                    return mvfl_val_from_int( v.manifestation.num.as_int - w.manifestation.num.as_int );
+                    firstArg->manifestation.num.as_int += nextArg->manifestation.num.as_int;
+                    break;
                 case MVFL_FLOAT:
-                    return mvfl_val_from_float( v.manifestation.num.as_int - w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
+                    firstArg->type = MVFL_FLOAT;
+                    firstArg->manifestation.num.as_float = firstArg->manifestation.num.as_int;
+                    firstArg->manifestation.num.as_float += nextArg->manifestation.num.as_float;
+                    break;
+                default:
+                    break;
             }
+            break;
         case MVFL_FLOAT:
-            switch ( w.type ) {
+            switch( nextArg->type ) {
                 case MVFL_INTEGER:
-                    return mvfl_val_from_float( v.manifestation.num.as_float - w.manifestation.num.as_int );
+                    firstArg->manifestation.num.as_float += nextArg->manifestation.num.as_int;
+                    break;
                 case MVFL_FLOAT:
-                    return mvfl_val_from_float( v.manifestation.num.as_float - w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
+                    firstArg->manifestation.num.as_float += nextArg->manifestation.num.as_float;
+                    break;
+                default:
+                    break;
             }
-        default: // Error - propogate it up.
-            return v;
+            break;
+        default:
+            break;
+    }
+    /*
+    if ( firstArg->type == MVFL_INTEGER ) {
+        if ( nextArg->type == MVFL_INTEGER ) {
+            firstArg->manifestation.num.as_int += nextArg->manifestation.num.as_int;
+        }
+        else if ( nextArg->type == MVFL_FLOAT ) {
+            firstArg->type = MVFL_FLOAT;
+            firstArg->manifestation.num.as_float = firstArg->manifestation.num.as_int;
+            firstArg->manifestation.num.as_float += nextArg->manifestation.num.as_float;
+        }
+    }
+    else if ( firstArg->type == MVFL_FLOAT ) {
+        if ( nextArg->type == MVFL_INTEGER ) {
+            firstArg->manifestation.num.as_float += nextArg->manifestation.num.as_int;
+        }
+        else if ( nextArg->type == MVFL_FLOAT ) {
+            firstArg->manifestation.num.as_float += nextArg->manifestation.num.as_float;
+        }
+    }
+    */
+}
+
+void mvfl_arithmetic_sub_intern( mvfl_val_t* firstArg, mvfl_val_t* nextArg ) {
+
+    switch ( firstArg->type ) {
+        case MVFL_INTEGER:
+            switch( nextArg->type ) {
+                case MVFL_INTEGER:
+                    firstArg->manifestation.num.as_int -= nextArg->manifestation.num.as_int;
+                    break;
+                case MVFL_FLOAT:
+                    firstArg->type = MVFL_FLOAT;
+                    firstArg->manifestation.num.as_float = firstArg->manifestation.num.as_int;
+                    firstArg->manifestation.num.as_float -= nextArg->manifestation.num.as_float;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case MVFL_FLOAT:
+            switch( nextArg->type ) {
+                case MVFL_INTEGER:
+                    firstArg->manifestation.num.as_float -= nextArg->manifestation.num.as_int;
+                    break;
+                case MVFL_FLOAT:
+                    firstArg->manifestation.num.as_float -= nextArg->manifestation.num.as_float;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        default:
+            break;
     }
 
 }
 
-mvfl_val_t mvfl_mul_intern( mvfl_val_t v, mvfl_val_t w ) {
+void mvfl_arithmetic_mul_intern( mvfl_val_t* firstArg, mvfl_val_t* nextArg ) {
 
-    switch ( v.type ) {
+    switch ( firstArg->type ) {
         case MVFL_INTEGER:
-            switch ( w.type ) {
+            switch( nextArg->type ) {
                 case MVFL_INTEGER:
-                    return mvfl_val_from_int( v.manifestation.num.as_int * w.manifestation.num.as_int );
+                    firstArg->manifestation.num.as_int *= nextArg->manifestation.num.as_int;
+                    break;
                 case MVFL_FLOAT:
-                    return mvfl_val_from_float( v.manifestation.num.as_int * w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
+                    firstArg->type = MVFL_FLOAT;
+                    firstArg->manifestation.num.as_float = firstArg->manifestation.num.as_int;
+                    firstArg->manifestation.num.as_float *= nextArg->manifestation.num.as_float;
+                    break;
+                default:
+                    break;
             }
+            break;
         case MVFL_FLOAT:
-            switch ( w.type ) {
+            switch( nextArg->type ) {
                 case MVFL_INTEGER:
-                    return mvfl_val_from_float( v.manifestation.num.as_float * w.manifestation.num.as_int );
+                    firstArg->manifestation.num.as_float *= nextArg->manifestation.num.as_int;
+                    break;
                 case MVFL_FLOAT:
-                    return mvfl_val_from_float( v.manifestation.num.as_float * w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
+                    firstArg->manifestation.num.as_float *= nextArg->manifestation.num.as_float;
+                    break;
+                default:
+                    break;
             }
-        default: // Error - propogate it up.
-            return v;
+            break;
+        default:
+            break;
     }
 
 }
 
-mvfl_val_t mvfl_div_intern( mvfl_val_t v, mvfl_val_t w ) {
+void mvfl_arithmetic_div_intern( mvfl_val_t* firstArg, mvfl_val_t* nextArg ) {
 
-    switch ( w.type ) {
+    switch ( nextArg->type ) {
         case MVFL_INTEGER:
-            if ( w.manifestation.num.as_int == 0 )
-                return mvfl_val_error( MVFL_ERROR_DIV_ZERO );
-            else
-                switch ( v.type ) {
+            if ( nextArg->manifestation.num.as_int == 0 ) {
+                firstArg->type = MVFL_ERROR;
+                firstArg->manifestation.error = "Cannot divide by zero!";
+            }
+            else {
+                switch( firstArg->type ) {
                     case MVFL_INTEGER:
-                        return mvfl_val_from_int( v.manifestation.num.as_int / w.manifestation.num.as_int );
+                        firstArg->manifestation.num.as_int /= nextArg->manifestation.num.as_int;
+                        break;
                     case MVFL_FLOAT:
-                        return mvfl_val_from_float( v.manifestation.num.as_float / w.manifestation.num.as_int );
-                    default: // Error - propogate it up.
-                        return w;
+                        firstArg->manifestation.num.as_float /= nextArg->manifestation.num.as_int;
+                        break;
+                    default:
+                        break;
                 }
+            }
+            break;
         case MVFL_FLOAT:
-            if ( w.manifestation.num.as_float == 0 )
-                return mvfl_val_error( MVFL_ERROR_DIV_ZERO );
-            else
-                switch ( v.type ) {
+            if ( nextArg->manifestation.num.as_float == 0 ) {
+                firstArg->type = MVFL_ERROR;
+                firstArg->manifestation.error = "Cannot divide by zero!";
+            }
+            else {
+                switch( firstArg->type ) {
                     case MVFL_INTEGER:
-                        return mvfl_val_from_float( v.manifestation.num.as_int / w.manifestation.num.as_float );
+                        firstArg->type = MVFL_FLOAT;
+                        firstArg->manifestation.num.as_float = firstArg->manifestation.num.as_int;
+                        firstArg->manifestation.num.as_float /= nextArg->manifestation.num.as_float;
+                        break;
                     case MVFL_FLOAT:
-                        return mvfl_val_from_float( v.manifestation.num.as_float / w.manifestation.num.as_float );
-                    default: // Error - propogate it up.
-                        return w;
+                        firstArg->manifestation.num.as_float /= nextArg->manifestation.num.as_float;
+                        break;
+                    default:
+                        break;
                 }
-        default: // Error - propogate it up.
-            return w;
+            }
+            break;
+        default:
+            break;
     }
 
 }
-
+/*
 mvfl_val_t mvfl_mod_intern( mvfl_val_t v, mvfl_val_t w ) {
 
     mvfl_int_t i;
@@ -150,74 +219,112 @@ mvfl_val_t mvfl_mod_intern( mvfl_val_t v, mvfl_val_t w ) {
     }
 
 }
-
-mvfl_val_t mvfl_min_intern( mvfl_val_t v, mvfl_val_t w ) {
-
-    switch ( v.type ) {
-        case MVFL_INTEGER:
-            switch ( w.type ) {
-                case MVFL_INTEGER:
-                    return ( v.manifestation.num.as_int < w.manifestation.num.as_int )
-                        ? mvfl_val_from_int( v.manifestation.num.as_int )
-                        : mvfl_val_from_int( w.manifestation.num.as_int );
-                case MVFL_FLOAT:
-                    return ( v.manifestation.num.as_int < w.manifestation.num.as_float )
-                        ? mvfl_val_from_int( v.manifestation.num.as_int )
-                        : mvfl_val_from_float( w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
-            }
-        case MVFL_FLOAT:
-            switch ( w.type ) {
-                case MVFL_INTEGER:
-                    return ( v.manifestation.num.as_float < w.manifestation.num.as_int )
-                        ? mvfl_val_from_float( v.manifestation.num.as_float )
-                        : mvfl_val_from_int( w.manifestation.num.as_int );
-                case MVFL_FLOAT:
-                    return ( v.manifestation.num.as_float < w.manifestation.num.as_float )
-                        ? mvfl_val_from_float( v.manifestation.num.as_float )
-                        : mvfl_val_from_float( w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
-            }
-        default: // Error - propogate it up.
-            return v;
-    }
-
-}
-
-mvfl_val_t mvfl_max_intern( mvfl_val_t v, mvfl_val_t w ) {
-
-    switch ( v.type ) {
-        case MVFL_INTEGER:
-            switch ( w.type ) {
-                case MVFL_INTEGER:
-                    return ( v.manifestation.num.as_int > w.manifestation.num.as_int )
-                        ? mvfl_val_from_int( v.manifestation.num.as_int )
-                        : mvfl_val_from_int( w.manifestation.num.as_int );
-                case MVFL_FLOAT:
-                    return ( v.manifestation.num.as_int > w.manifestation.num.as_float )
-                        ? mvfl_val_from_int( v.manifestation.num.as_int )
-                        : mvfl_val_from_float( w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
-            }
-        case MVFL_FLOAT:
-            switch ( w.type ) {
-                case MVFL_INTEGER:
-                    return ( v.manifestation.num.as_float > w.manifestation.num.as_int )
-                        ? mvfl_val_from_float( v.manifestation.num.as_float )
-                        : mvfl_val_from_int( w.manifestation.num.as_int );
-                case MVFL_FLOAT:
-                    return ( v.manifestation.num.as_float > w.manifestation.num.as_float )
-                        ? mvfl_val_from_float( v.manifestation.num.as_float )
-                        : mvfl_val_from_float( w.manifestation.num.as_float );
-                default: // Error - propogate it up.
-                    return w;
-            }
-        default: // Error - propogate it up.
-            return v;
-    }
-
-}
 */
+
+void mvfl_arithmetic_min_intern( mvfl_val_t* firstArg, mvfl_val_t* nextArg ) {
+
+    switch ( firstArg->type ) {
+        case MVFL_INTEGER:
+            switch ( nextArg->type ) {
+                case MVFL_INTEGER:
+                    if ( firstArg->manifestation.num.as_int < nextArg->manifestation.num.as_int ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->manifestation.num.as_int = nextArg->manifestation.num.as_int;
+                    }
+                    break;
+                case MVFL_FLOAT:
+                    if ( firstArg->manifestation.num.as_int < nextArg->manifestation.num.as_float ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->type = MVFL_FLOAT;
+                        firstArg->manifestation.num.as_float = nextArg->manifestation.num.as_float;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case MVFL_FLOAT:
+            switch ( nextArg->type ) {
+                case MVFL_INTEGER:
+                    if ( firstArg->manifestation.num.as_float < nextArg->manifestation.num.as_int ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->type = MVFL_INTEGER;
+                        firstArg->manifestation.num.as_int = nextArg->manifestation.num.as_int;
+                    }
+                    break;
+                case MVFL_FLOAT:
+                    if ( firstArg->manifestation.num.as_float < nextArg->manifestation.num.as_float ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->manifestation.num.as_float = nextArg->manifestation.num.as_float;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        default:
+            break;
+    }
+
+}
+
+void mvfl_arithmetic_max_intern( mvfl_val_t* firstArg, mvfl_val_t* nextArg ) {
+
+    switch ( firstArg->type ) {
+        case MVFL_INTEGER:
+            switch ( nextArg->type ) {
+                case MVFL_INTEGER:
+                    if ( firstArg->manifestation.num.as_int > nextArg->manifestation.num.as_int ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->manifestation.num.as_int = nextArg->manifestation.num.as_int;
+                    }
+                    break;
+                case MVFL_FLOAT:
+                    if ( firstArg->manifestation.num.as_int > nextArg->manifestation.num.as_float ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->type = MVFL_FLOAT;
+                        firstArg->manifestation.num.as_float = nextArg->manifestation.num.as_float;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case MVFL_FLOAT:
+            switch ( nextArg->type ) {
+                case MVFL_INTEGER:
+                    if ( firstArg->manifestation.num.as_float > nextArg->manifestation.num.as_int ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->type = MVFL_INTEGER;
+                        firstArg->manifestation.num.as_int = nextArg->manifestation.num.as_int;
+                    }
+                    break;
+                case MVFL_FLOAT:
+                    if ( firstArg->manifestation.num.as_float > nextArg->manifestation.num.as_float ) {
+                        // do nothing
+                    }
+                    else {
+                        firstArg->manifestation.num.as_float = nextArg->manifestation.num.as_float;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        default:
+            break;
+    }
+
+}
