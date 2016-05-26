@@ -23,9 +23,12 @@ enum mvfl_type_t {
     MVFL_INTEGER,
     MVFL_FLOAT,
     MVFL_SYMBOL,
+    MVFL_ERROR,
     MVFL_SEXPR,
-    MVFL_ERROR
+    MVFL_QEXPR
 };
+
+typedef mvfl_sexpr_t mvfl_qexpr_t;
 
 // A cons cell has two pointers:
 // One is to a value, and the other is to another cons cell.
@@ -56,6 +59,7 @@ union mvfl_manifestation_t {
     mvfl_symbol_t symbol;
     mvfl_error_t error;
     mvfl_sexpr_t * sexpr;
+    mvfl_qexpr_t * qexpr;
 };
 
 // Our values have a type, and a manifestation.

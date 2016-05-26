@@ -14,7 +14,7 @@ mvfl_val_t* mvfl_eval_val( mvfl_val_t* value );
 
 int main( int argc, char** argv ) {
 
-/*    
+    /*
     mvfl_val_t* a = mvfl_val_from_symbol( "T" );
     mvfl_val_t* b = mvfl_val_from_symbol( "5" );
     mvfl_val_t* c1 = mvfl_val_from_int( 10 );
@@ -59,8 +59,7 @@ int main( int argc, char** argv ) {
     mvfl_sexpr_delete( sexpr2 );
 
     mvfl_val_delete( popped );
- */   
-   
+   */ 
     mpc_parser_t* Integer = mpc_new("Integer");
     mpc_parser_t* Float = mpc_new("Float");
     mpc_parser_t* Number = mpc_new("Number");
@@ -75,11 +74,12 @@ int main( int argc, char** argv ) {
     mpc_parser_t* Base = mpc_new("Base");
     mpc_parser_t* Expr = mpc_new("Expr");
     mpc_parser_t* Sexpr = mpc_new("Sexpr");
+    mpc_parser_t* Qexpr = mpc_new("Qexpr");
     mpc_parser_t* Mvfl = mpc_new("Mvfl");
 
     mpca_lang_contents( MPCA_LANG_DEFAULT, GRAMMAR_FILE,
         Integer, Float, Number, PlusOp, MultOp, ExpnOp, Symbol,
-        InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr,
+        InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr, Qexpr,
         Mvfl
     );
 
@@ -107,18 +107,20 @@ int main( int argc, char** argv ) {
             printf("Parse tree:\n");
             mpc_ast_print( parsed.output );
 
-            mvfl_val_t* val = mvfl_val_read( parsed.output );
-            printf("Parse tree as S-Expression:\n");
-            mvfl_val_println( val );
+            mvfl_sexpr_t* mainSexpr = mvfl_sexpr_init();
+            mvfl_read_ast( parsed.output, mainSexpr );
+            mvfl_val_t* value = mvfl_val_from_sexpr( mainSexpr );
 
-            mvfl_val_t* result = mvfl_eval_val( val );
-            printf("Evaluated output: ");
+            printf("Parse tree as S-Expression:\n");
+            mvfl_sexpr_println( mainSexpr );
+
+            mvfl_val_t* result = mvfl_eval_val( value );
+            printf("\nEvaluated output: ");
             mvfl_val_println( result );
 
-
-
             mvfl_val_delete( result );
-            //mvfl_val_delete( val );
+            
+           // mvfl_val_delete( val );
             
 
 
@@ -136,12 +138,11 @@ int main( int argc, char** argv ) {
 
     }
 
-    mpc_cleanup( 15,
+    mpc_cleanup( 16,
         Integer, Float, Number, PlusOp, MultOp, ExpnOp, Symbol,
-        InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr,
+        InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr, Qexpr,
         Mvfl
     );
-
     return 0;
 
 }

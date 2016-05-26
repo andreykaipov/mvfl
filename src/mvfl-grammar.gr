@@ -7,6 +7,7 @@ Float : /[0-9]+\.[0-9]+/
 
 Number : <Float>
        | <Integer>
+       | <PlusOp> <Number>
        ;
 
 PlusOp : '+'
@@ -18,10 +19,11 @@ MultOp : '*'
        ;
 ExpnOp : '^'
        ;
-Symbol : "add" | "sub" | <PlusOp>
+Symbol : "add" | "sum" | "sub" | "diff" | <PlusOp>
        | "mul" | "prod" | "div" | <MultOp>
        | "pow" | <ExpnOp>
        | "min" | "max"
+       | "list" | "head" | "tail" | "join" | "eval"
        ;
 
 InfixExpr : <Factor> ( <PlusOp> <Factor> )*
@@ -34,23 +36,27 @@ Term : <Base> ( <ExpnOp> <Term> )?
      ;
 
 Base : <Number>
-     | <PlusOp> <Base>
-     | <PrefixExpr>
+     | <PlusOp>? <Sexpr>
      | '(' <InfixExpr> ')'
      ;
 
 PrefixExpr : <Symbol> <Factor>+
            ;
 
-Expr : <PrefixExpr>
+Expr 
+     : <Symbol>
      | <InfixExpr>
-     | <Symbol>
+     | <Sexpr>
+     | <Qexpr>
      ;
 
-Sexpr : <Expr>*
-      | '(' <Sexpr> ')'
+Sexpr : '(' <Expr>* ')'
+      ;
+Qexpr : '{' <Expr>* '}'
       ;
 
-Mvfl : /^/ <Sexpr> /$/ ;
+Mvfl : /^/ <Symbol> <Base>* /$/
+     | /^/ <Expr>* /$/
+     ;
 
 
