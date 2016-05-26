@@ -306,23 +306,31 @@ mvfl_val_t* mvfl_sexpr_head( mvfl_sexpr_t* sexpr ) {
 
 }
 
-mvfl_val_t* mvfl_sexpr_tail( mvfl_sexpr_t* sexpr ) {
+mvfl_sexpr_t* mvfl_sexpr_tail( mvfl_sexpr_t* sexpr ) {
 
-    mvfl_val_t* val = mvfl_sexpr_pop( sexpr, 0 );
-    mvfl_val_delete( val );
-    return mvfl_val_from_sexpr( sexpr );
+    mvfl_val_delete( mvfl_sexpr_pop(sexpr, 0) );
+    return sexpr;
 
 }
 
 // Concatenates sexpr2 onto the end of sexpr1.
-void mvfl_sexpr_cat( mvfl_sexpr_t* sexpr1, mvfl_sexpr_t* sexpr2 ) {
+void mvfl_sexpr_concat( mvfl_sexpr_t* sexpr1, mvfl_sexpr_t* sexpr2 ) {
 
-    sexpr1->last->next = sexpr2->first;
-    sexpr2->first->prev = sexpr1->last;
-
-    sexpr1->last = sexpr2->last;
-
-    free( sexpr2 );
+    if ( sexpr1->count == 0 ) {
+        sexpr1->first = sexpr2->first;
+        sexpr1->last = sexpr2->last;
+        sexpr1->count = sexpr2->count;
+    }
+    else if ( sexpr2->count == 0 ) {
+        free( sexpr2 );
+    }
+    else {
+        sexpr1->last->next = sexpr2->first;
+        sexpr2->first->prev = sexpr1->last;
+        sexpr1->last = sexpr2->last;
+        sexpr1->count += sexpr2->count;
+        free( sexpr2 );
+    }
 
 }
 
@@ -385,19 +393,18 @@ mvfl_val_t* mvfl_qexpr_head( mvfl_qexpr_t* qexpr ) {
     return mvfl_sexpr_head( qexpr );
 }
 
-mvfl_val_t* mvfl_qexpr_tail( mvfl_qexpr_t* qexpr ) {
+mvfl_qexpr_t* mvfl_qexpr_tail( mvfl_qexpr_t* qexpr ) {
     mvfl_val_delete( mvfl_qexpr_pop(qexpr, 0) );
-    return mvfl_val_from_qexpr( qexpr );
+    return qexpr;
 }
 
-void mvfl_qexpr_cat( mvfl_qexpr_t* qexpr1, mvfl_qexpr_t* qexpr2 ) {
-    mvfl_sexpr_cat( qexpr1, qexpr2 );
+void mvfl_qexpr_concat( mvfl_qexpr_t* qexpr1, mvfl_qexpr_t* qexpr2 ) {
+    mvfl_sexpr_concat( qexpr1, qexpr2 );
 }
 
 // Changes an MVFL value whose manifestation is a Sexpr to an Qexpr.
 
 mvfl_val_t* mvfl_qexpr_list( mvfl_val_t* val ) {
-    if ( val->type != MVFL_SEXPR ) { exit(100); }
     val->type = MVFL_QEXPR;
     val->manifestation.qexpr = val->manifestation.sexpr;
     return val;
@@ -620,6 +627,96 @@ mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr ) {
 
 }
 
+mvfl_val_t* mvfl_qexpr_head_intern( mvfl_sexpr_t* args ) {
+    if ( args->first->value->type != MVFL_QEXPR ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function `head` requires a Q-Expr.");
+    }
+    if ( args->count != 1 ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function 'head' passed more than 1 argument.");
+    }
+    mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+    mvfl_qexpr_t* qexpr = val->manifestation.qexpr;
+    free( val );
+    mvfl_sexpr_delete( args );
+    return mvfl_qexpr_head( qexpr );
+}
+
+mvfl_val_t* mvfl_qexpr_tail_intern( mvfl_sexpr_t* args ) {
+    if ( args->first->value->type != MVFL_QEXPR ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function tail` requires a Q-Expr.");
+    }
+    if ( args->count != 1 ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function 'tail' passed more than 1 argument.");
+    }
+    mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+    mvfl_qexpr_t* qexpr = val->manifestation.qexpr;
+    free( val );
+    mvfl_sexpr_delete( args );
+    mvfl_qexpr_t* tail = mvfl_qexpr_tail( qexpr );
+    return mvfl_val_from_qexpr( tail );
+}
+
+mvfl_val_t* mvfl_qexpr_join_intern( mvfl_sexpr_t* args ) {
+    mvfl_cons_cell_t* cell = args->first;
+    while ( cell != NULL ) {
+        if ( cell->value->type != MVFL_QEXPR ) {
+            mvfl_sexpr_delete( args );
+            return mvfl_val_from_error("Function 'join' expects arguments all \
+of which are Q-Expressions.");
+        }
+        cell = cell->next;
+    }
+
+    mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+    mvfl_qexpr_t* firstQexpr = val->manifestation.qexpr;
+    free( val );
+    while ( args->count > 0 ) {
+        mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+        mvfl_qexpr_t* nextQexpr = val->manifestation.qexpr;
+        free( val );
+        mvfl_qexpr_concat( firstQexpr, nextQexpr );
+    }
+    mvfl_sexpr_delete( args );
+    return mvfl_val_from_qexpr( firstQexpr );
+}
+
+mvfl_val_t* mvfl_qexpr_list_intern( mvfl_sexpr_t* args ) {
+    /*if ( args->first->value->type != MVFL_SEXPR ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function 'list' requires an S-Expression.");
+    }
+    if ( args->count != 1 ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function 'list' passed more than 1 argument.");
+    }*/
+    /*mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+    mvfl_sexpr_t* sexpr = val->manifestation.sexpr;
+    free( val );
+    mvfl_sexpr_delete( args );*/
+    return mvfl_val_from_qexpr( args );
+}
+
+mvfl_val_t* mvfl_qexpr_eval_intern( mvfl_sexpr_t* args ) {
+    if ( args->first->value->type != MVFL_QEXPR ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function 'eval' requires a Q-Expr.");
+    }
+    if ( args->count != 1 ) {
+        mvfl_sexpr_delete( args );
+        return mvfl_val_from_error("Function 'eval' passed more than 1 argument.");
+    }
+    mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+    mvfl_qexpr_t* qexpr = val->manifestation.qexpr;
+    free( val );
+    mvfl_sexpr_delete( args );
+    return mvfl_qexpr_eval( qexpr );
+}
+
+
 mvfl_val_t* mvfl_eval_intern_op( char* op, mvfl_sexpr_t* sexpr ) {
 
     if ( strcmp("head",op) == 0 || strcmp("tail",op) == 0 || strcmp("join",op) == 0
@@ -640,20 +737,14 @@ mvfl_val_t* mvfl_eval_intern_op( char* op, mvfl_sexpr_t* sexpr ) {
 }
 
 
-mvfl_val_t* mvfl_eval_qexpr_op( char* op, mvfl_sexpr_t* sexpr ) {
+mvfl_val_t* mvfl_eval_qexpr_op( char* op, mvfl_sexpr_t* args ) {
 
-    if ( sexpr->count != 1 ) {
-        fprintf(stderr,"WOW\n");
-    }
-    mvfl_val_t* qexprVal = mvfl_sexpr_pop( sexpr, 0 );
-    mvfl_qexpr_t* qexpr = qexprVal->manifestation.qexpr;
-    free( qexprVal );
-
-
-    if ( strcmp(op,"head") == 0 ) {
-        mvfl_sexpr_delete( sexpr );
-        return mvfl_qexpr_head( qexpr );
-    }
+    if ( strcmp(op,"head") == 0 ) { return mvfl_qexpr_head_intern( args ); }
+    if ( strcmp(op,"tail") == 0 ) { return mvfl_qexpr_tail_intern( args ); }
+    if ( strcmp(op,"join") == 0 ) { return mvfl_qexpr_join_intern( args ); }
+    if ( strcmp(op,"list") == 0 ) { return mvfl_qexpr_list_intern( args ); }
+    if ( strcmp(op,"eval") == 0 ) { return mvfl_qexpr_eval_intern( args ); }
+    /*
     if ( strcmp(op,"tail") == 0 ) {
         mvfl_sexpr_delete( sexpr );
         return mvfl_qexpr_tail( qexpr );
@@ -668,6 +759,7 @@ mvfl_val_t* mvfl_eval_qexpr_op( char* op, mvfl_sexpr_t* sexpr ) {
         mvfl_sexpr_delete( sexpr );
         return mvfl_val_from_qexpr( qexpr );
     }
+    */
 
 }
     
@@ -675,10 +767,12 @@ mvfl_val_t* mvfl_eval_qexpr_op( char* op, mvfl_sexpr_t* sexpr ) {
 
 mvfl_val_t* mvfl_eval_arithmetic_op( char* op, mvfl_sexpr_t* sexpr ) {
     
+    // first check everything in the sexpr is a number
     mvfl_cons_cell_t* cell = sexpr->first;
     while ( cell != NULL ) {
         mvfl_type_t type = cell->value->type;
         if ( type != MVFL_INTEGER && type != MVFL_FLOAT ) {
+            // If it's an error, then return that one.
             if  ( type == MVFL_ERROR ) {
                 mvfl_val_t* error = mvfl_val_clone( cell->value ); 
                 mvfl_sexpr_delete( sexpr );
@@ -705,7 +799,6 @@ mvfl_val_t* mvfl_eval_arithmetic_op( char* op, mvfl_sexpr_t* sexpr ) {
 
     while ( sexpr->count > 0 ) {
 
-        fprintf(stderr,":dshsdhs\n");
         mvfl_val_t* nextArg = mvfl_sexpr_pop( sexpr, 0 );
         
         if ( strcmp(op,"add") == 0 || strcmp(op,"sum") == 0 || strcmp(op,"+") == 0 ) {
