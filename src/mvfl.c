@@ -23,8 +23,8 @@ mvfl_sexpr_t* mvfl_sexpr_clone( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr );
 void mvfl_sexpr_print( mvfl_sexpr_t* sexpr, char open, char close );
 
-mvfl_val_t* mvfl_val_read( mpc_ast_t* tree );
-mvfl_sexpr_t* mvfl_infix_to_sexpr( mpc_ast_t* tree );
+void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr );
+void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr );
 mvfl_sexpr_t* mvfl_prefix_to_sexpr( mpc_ast_t* tree );
 mvfl_val_t* mvfl_eval_val( mvfl_val_t* value ); 
 mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr );
@@ -343,6 +343,10 @@ void mvfl_sexpr_print( mvfl_sexpr_t* sexpr, char open, char close ) {
 
 }
 
+void mvfl_sexpr_println( mvfl_sexpr_t* sexpr ) {
+    mvfl_sexpr_print( sexpr, '(', ')' );
+}
+
 // Deletes the constituent cons cells in an S-Expression.
 void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr ) {
 
@@ -463,95 +467,102 @@ mvfl_val_t* mvfl_val_read_sym( mpc_ast_t* tree ) {
     return mvfl_val_from_symbol( tree->contents );
 }
 
+/* Takes an abstract syntax tree representing an arithmetic Infix Expression
+   and creates an equivalent prefix S-Expression out of it.
+   Since the parser creates a tree adhering to the order of operations,
+   this function isn't actually all that hard than I made it out to be... :-) */
+void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
 
-mvfl_sexpr_t* mvfl_infix_to_sexpr( mpc_ast_t* tree ) {
+    if ( sexpr->count == 0 ) {
+        mvfl_read_ast( tree->children[1], sexpr ); // symbol
+        mvfl_read_ast( tree->children[0], sexpr ); // first arg
+        mvfl_read_ast( tree->children[2], sexpr ); // second arg
+    }
+    else {
+        mvfl_sexpr_t* sexpr2 = mvfl_sexpr_init();
+        mvfl_read_ast( tree->children[1], sexpr2 ); // symbol
+        mvfl_read_ast( tree->children[0], sexpr2 ); // first arg
+        mvfl_read_ast( tree->children[2], sexpr2 ); // second arg
+        mvfl_sexpr_append( sexpr, mvfl_val_from_sexpr( sexpr2 ) );
+        sexpr = sexpr2;
+    }
 
-    mvfl_sexpr_t* sexpr = mvfl_sexpr_init();
-    mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[1] ) ); //symbol
-    mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[0] ) );
-    mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[2] ) );
+    char* mainOpTag = tree->children[1]->tag;
 
     for ( int i = 3; i < tree->children_num; i += 2 ) {
 
-        mvfl_sexpr_t* sexpr2 = mvfl_sexpr_init();
-        mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i] ) ); //symbol
-        mvfl_sexpr_append( sexpr2, mvfl_val_from_sexpr( sexpr ) );
-        mvfl_sexpr_append( sexpr2, mvfl_val_read( tree->children[i+1] ) );
-        sexpr = sexpr2;
+        char* nextOpTag = tree->children[i]->tag;
+
+        if ( strcmp(mainOpTag, nextOpTag) == 0 ) {
+            mvfl_read_ast( tree->children[i+1], sexpr );
+        }
+        else {
+            /* If the nextOpTag is different from the main one, a new nonterminal
+               would have been created for that operation, so something is wrong here.
+               Otherwise, the arguments should be on the same level. */
+            fprintf(stderr,"Your grammar is messed up Andrey!\n");
+            exit(111);
+        }
 
     }
 
-    return sexpr;
-
 }
 
-/*
-mvfl_sexpr_t* mvfl_prefix_to_sexpr( mpc_ast_t* tree ) {
 
-    mvfl_sexpr_t* sexpr = mvfl_sexpr_init();
+// Reads an MPC abstract syntax tree into an MVFL S-Expression. 
+void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
 
-    mvfl_sexpr_append( sexpr, mvfl_val_read( tree->children[0] ) );
-    */
-
-
-
-mvfl_val_t* mvfl_val_read( mpc_ast_t* tree ) {
+    // Sexpr and Qexpr are like the same thing, so 
+    mvfl_sexpr_t* anothaSexpr = NULL;
+    mvfl_qexpr_t* qexpr = NULL;
 
     char* tag = tree->tag;
 
-    //if ( strstr(tag, "Integer") ) { return mvfl_val_read_int( tree ); }
-    //if ( strstr(tag, "Float") ) { return mvfl_val_read_float( tree ); }
-    if ( strstr(tag, "Number") ) { return mvfl_val_read_number( tree ); }
-    if ( strstr(tag, "Symbol") ) { return mvfl_val_read_sym( tree ); }
-    if ( strstr(tag, "PlusOp") ) { return mvfl_val_read_sym( tree ); }
-    if ( strstr(tag, "MultOp") ) { return mvfl_val_read_sym( tree ); }
-    if ( strstr(tag, "ExpnOp") ) { return mvfl_val_read_sym( tree ); }
-
-    if ( strstr(tag, "InfixExpr") ) { return mvfl_val_from_sexpr( mvfl_infix_to_sexpr(tree) ); }
-    if ( strstr(tag, "Factor") ) { return mvfl_val_from_sexpr( mvfl_infix_to_sexpr(tree) ); }
-    if ( strstr(tag, "Term") ) { return mvfl_val_from_sexpr( mvfl_infix_to_sexpr(tree) ); }
-
-    // Create an empty sexpr for one of the following nonterminals.
-    // We use an else-if to prevent the potential memory leak!
-    // e.g. Whenever a tree branch looks like Sexpr|...|Base|...
-    mvfl_sexpr_t* sexpr = NULL;
-    mvfl_qexpr_t* qexpr = NULL;
-
-    if ( strcmp(tag, ">") == 0 ) { sexpr = mvfl_sexpr_init(); }
-    else if ( strstr(tag, "Base") ) { sexpr = mvfl_sexpr_init(); }
-    else if ( strstr(tag, "PrefixExpr") ) { sexpr = mvfl_sexpr_init(); }
-    else if ( strstr(tag, "Expr") ) { sexpr = mvfl_sexpr_init(); }
-    else if ( strstr(tag, "Sexpr") ) { sexpr = mvfl_sexpr_init(); }
-    else if ( strstr(tag, "Qexpr") ) { qexpr = mvfl_qexpr_init(); }
+    if ( strstr(tag,"Number") ) {
+        mvfl_sexpr_append( sexpr, mvfl_val_read_number(tree) );
+    }
+    else if ( strstr(tag,"Symbol") ||
+              strstr(tag,"PlusOp") || strstr(tag,"MultOp") || strstr(tag,"ExpnOp") ) {
+        mvfl_sexpr_append( sexpr, mvfl_val_read_sym(tree) );
+    }
+    else if ( strstr(tag,"InfixExpr") || strstr(tag,"Factor") || strstr(tag,"Term") ) {
+        mvfl_read_infix_into_sexpr( tree, sexpr );
+    }
+    // We do not create anotha sexpr for these tags because it would be redundant.
+    // They exist mostly in the grammar for neatness and proper parsing.
+    else if ( strcmp(tag,">") == 0 || strstr(tag,"PrefixExpr") || strstr(tag,"Base")) {
+        anothaSexpr = sexpr;
+    }
+    else if ( strstr(tag,"Sexpr") ) {
+        anothaSexpr = mvfl_sexpr_init();
+        mvfl_sexpr_append( sexpr, mvfl_val_from_sexpr( anothaSexpr ) );
+    }
+    else if ( strstr(tag,"Qexpr") ) {
+        qexpr = mvfl_qexpr_init();
+        mvfl_sexpr_append( sexpr, mvfl_val_from_qexpr( qexpr ) );
+    }
+    else {
+        fprintf(stderr,"Failed to read AST. The tag %s was not handled.\n", tag);
+        exit(21);
+    }
 
     // Fill the S-Expression with the children of the nonterminal.
     for ( int i = 0; i < tree->children_num; i += 1 ) {
 
-        mpc_ast_t* child = tree->children[i];
+        mpc_ast_t* childTree = tree->children[i];
 
-        if ( strcmp(child->contents, "(") == 0 ) { continue; }
-        if ( strcmp(child->contents, ")") == 0 ) { continue; }
-        if ( strcmp(child->contents, "{") == 0 ) { continue; }
-        if ( strcmp(child->contents, "}") == 0 ) { continue; }
-        if ( strcmp(child->tag, "regex") == 0 ) { continue; }
+        if ( strcmp(childTree->contents, "(") == 0 ) { continue; }
+        if ( strcmp(childTree->contents, ")") == 0 ) { continue; }
+        if ( strcmp(childTree->contents, "{") == 0 ) { continue; }
+        if ( strcmp(childTree->contents, "}") == 0 ) { continue; }
+        if ( strcmp(childTree->tag, "regex") == 0 ) { continue; }
 
-        fprintf(stderr,"HELLO\n");
-        if ( sexpr != NULL ) { mvfl_sexpr_append( sexpr, mvfl_val_read(child) ); }
-        if ( qexpr != NULL ) { fprintf(stderr,"HERE I AM\n"); mvfl_qexpr_append( qexpr, mvfl_val_read(child) ); }
+        if ( anothaSexpr != NULL ) { mvfl_read_ast(childTree, anothaSexpr); }
+        else if ( qexpr != NULL ) { fprintf(stderr,"HERE I AM\n"); mvfl_read_ast(childTree, qexpr); }
 
     }
 
-    fprintf(stderr,"BYE\n");
-    //return mvfl_val_from_sexpr( sexpr )->manifestation.sexpr->first->value;
-    if ( sexpr != NULL ) { return mvfl_val_from_sexpr( sexpr ); }
-    if ( qexpr != NULL ) { return mvfl_val_from_qexpr( qexpr ); }
-
-    fprintf(stderr,"SLOW DOWN COWBOY\n");
-    //return mvfl_val_from_error( "COULD NOT BE READ\n" );
-    exit(21);
-
 }
-
 
 mvfl_val_t* mvfl_eval_val( mvfl_val_t* value ) {
     

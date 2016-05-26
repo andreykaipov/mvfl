@@ -36,27 +36,28 @@ Term : <Base> ( <ExpnOp> <Term> )?
      ;
 
 Base : <Number>
-     | <PlusOp>? <Sexpr>
-     | '(' <InfixExpr> ')'
+     | <Sexpr>
      ;
 
 PrefixExpr : <Symbol> <Factor>+
            ;
 
 Expr 
-     : <Symbol>
-     | <InfixExpr>
+     : <InfixExpr>
+     | <PrefixExpr>
      | <Sexpr>
      | <Qexpr>
+     | <Symbol>
      ;
 
 Sexpr : '(' <Expr>* ')'
+      | <PlusOp> <Sexpr>
       ;
 Qexpr : '{' <Expr>* '}'
       ;
 
-Mvfl : /^/ <Symbol> <Base>* /$/
-     | /^/ <Expr>* /$/
+Mvfl  
+     : /^/ <Expr>* /$/
      ;
 
 
