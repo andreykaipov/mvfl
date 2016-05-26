@@ -43,8 +43,8 @@ PrefixExpr : <Symbol> <Factor>+
            ;
 
 Expr 
-     : <InfixExpr>
-     | <PrefixExpr>
+     : <PrefixExpr>
+     | <InfixExpr>
      | <Sexpr>
      | <Qexpr>
      | <Symbol>
