@@ -107,7 +107,7 @@ mvfl_val_t* mvfl_val_clone( mvfl_val_t* value ) {
         case MVFL_ERROR:
             return mvfl_val_from_error( value->manifestation.error );
         case MVFL_SEXPR:
-            return mvfl_val_from_sexpr( value->manifestation.sexpr );
+            return mvfl_val_from_sexpr( mvfl_sexpr_clone(value->manifestation.sexpr) );
         default:
             fprintf( stderr, "WOAH WHAT AM I CLONING\n" );
             exit(1);
@@ -206,6 +206,21 @@ mvfl_cons_cell_t* mvfl_cons_cell( mvfl_val_t* value ) {
 
 }
 
+void mvfl_sexpr_prepend( mvfl_sexpr_t* sexpr, mvfl_val_t* val ) {
+
+    if ( sexpr->count == 0 ) {
+        sexpr->first = sexpr->last = mvfl_cons_cell( val );
+    }
+    else {
+        mvfl_cons_cell_t* cell = mvfl_cons_cell( val );
+        cell->next = sexpr->first;
+        sexpr->first->prev = cell;
+        sexpr->first = cell;
+    }
+    sexpr->count += 1;
+
+}
+
 // Appends an MVFL value pointer to the end of an existing S-Expression.
 // Be careful to NOT append the same value pointer to an S-Expression twice!
 // Doing so will cause a double free error upon deletion of the S-Expr!
@@ -232,27 +247,27 @@ void mvfl_sexpr_append( mvfl_sexpr_t* sexpr, mvfl_val_t* val ) {
 // our new element BEFORE it, shifting subsequent elements to the right by one.
 void mvfl_sexpr_insert( mvfl_sexpr_t* sexpr, mvfl_val_t* val, int index ) {
     
-    mvfl_cons_cell_t* cell = mvfl_cons_cell( val );
-
     if ( index == 0 ) {
-        sexpr->first->prev = cell;
-        cell->next = sexpr->first;
-        sexpr->first = cell;
+        mvfl_sexpr_prepend( sexpr, val );
     }
     else if ( index == sexpr->count - 1 ) {
         mvfl_sexpr_append( sexpr, val );
     }
-    else {
+    else if ( 0 < index && index < sexpr->count - 1 ) {
+        // Find the index-th cell.
         mvfl_cons_cell_t* current = sexpr->first;
         for ( int i = 0; i < index; i += 1 ) { current = current->next; }
 
+        mvfl_cons_cell_t* cell = mvfl_cons_cell( val );
         // Connect new cell in-between two existing cells.
         cell->prev = current->prev;
         cell->next = current;
-
         // Make the surrounding cells point to the new cell.
         current->prev->next = cell;
         current->prev = cell;
+    }
+    else {
+        fprintf( stderr, "You're doing it wrong.\n" );
     }
 
     sexpr->count += 1;
@@ -334,6 +349,21 @@ void mvfl_sexpr_concat( mvfl_sexpr_t* sexpr1, mvfl_sexpr_t* sexpr2 ) {
 
 }
 
+void mvfl_sexpr_clear( mvfl_sexpr_t* sexpr );
+
+// Takes a pointer to an sexpr S and points it to the sexpr (S).
+void mvfl_sexpr_enclose( mvfl_sexpr_t* sexpr ) {
+
+    mvfl_sexpr_t* cloned = mvfl_sexpr_clone( sexpr );
+    mvfl_sexpr_t* enclosed = mvfl_sexpr_init();
+    mvfl_sexpr_append( enclosed, mvfl_val_from_sexpr(cloned) );
+
+    mvfl_sexpr_clear( sexpr );
+    *sexpr = *enclosed;
+    free( enclosed );
+
+}
+
 
 // Prints the constituent cells of an S-Expression, delimited by spaces.
 // The entire S-Expression is enclosed between open and close characters.
@@ -355,8 +385,7 @@ void mvfl_sexpr_println( mvfl_sexpr_t* sexpr ) {
     mvfl_sexpr_print( sexpr, '(', ')' );
 }
 
-// Deletes the constituent cons cells in an S-Expression.
-void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr ) {
+void mvfl_sexpr_clear( mvfl_sexpr_t* sexpr ) {
 
     mvfl_cons_cell_t* cell;
     while ( sexpr->first != NULL ) {
@@ -365,6 +394,13 @@ void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr ) {
         mvfl_val_delete( cell->value );
         free( cell );
     }
+
+}
+
+// Deletes the constituent cons cells in an S-Expression.
+void mvfl_sexpr_delete( mvfl_sexpr_t* sexpr ) {
+
+    mvfl_sexpr_clear( sexpr );
     free( sexpr );
 
 }
@@ -479,34 +515,38 @@ mvfl_val_t* mvfl_val_read_sym( mpc_ast_t* tree ) {
    Since the parser creates a tree adhering to the order of operations,
    this function isn't actually all that hard than I made it out to be... :-) */
 void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
-
+    
+    // If the current passed in Sexpr is empty...
     if ( sexpr->count == 0 ) {
         mvfl_read_ast( tree->children[1], sexpr ); // symbol
         mvfl_read_ast( tree->children[0], sexpr ); // first arg
         mvfl_read_ast( tree->children[2], sexpr ); // second arg
     }
-    else {
+    // Otherwise, append a new Sexpr to the end of the current one.
+    else if ( sexpr->count > 0 ) {
         mvfl_sexpr_t* sexpr2 = mvfl_sexpr_init();
         mvfl_read_ast( tree->children[1], sexpr2 ); // symbol
         mvfl_read_ast( tree->children[0], sexpr2 ); // first arg
         mvfl_read_ast( tree->children[2], sexpr2 ); // second arg
-        mvfl_sexpr_append( sexpr, mvfl_val_from_sexpr( sexpr2 ) );
+        mvfl_sexpr_append( sexpr, mvfl_val_from_sexpr(sexpr2) );
         sexpr = sexpr2;
     }
 
-    char* mainOpTag = tree->children[1]->tag;
-
     for ( int i = 3; i < tree->children_num; i += 2 ) {
 
-        char* nextOpTag = tree->children[i]->tag;
+        mpc_ast_t* prevOp = tree->children[i-2];
+        mpc_ast_t* currOp = tree->children[i];
 
-        if ( strcmp(mainOpTag, nextOpTag) == 0 ) {
+        // Verify that operators with the samae precedence (+- and */) are on thee
+        // same level of the tree. If they are not, something is wrong with our grammar.
+        if ( strcmp( prevOp->tag,currOp->tag ) == 0 ) {
+            if ( strcmp( prevOp->contents,currOp->contents ) != 0 ) {
+                mvfl_sexpr_enclose( sexpr );
+                mvfl_sexpr_prepend( sexpr, mvfl_val_from_symbol(currOp->contents) );
+            }
             mvfl_read_ast( tree->children[i+1], sexpr );
         }
         else {
-            /* If the nextOpTag is different from the main one, a new nonterminal
-               would have been created for that operation, so something is wrong here.
-               Otherwise, the arguments should be on the same level. */
             fprintf(stderr,"Your grammar is messed up Andrey!\n");
             exit(111);
         }
@@ -516,7 +556,7 @@ void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
 }
 
 
-// Reads an MPC abstract syntax tree into an MVFL S-Expression. 
+// Reads an MPC abstract syntax tree by reading it into an MVFL S-Expression.
 void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
 
     // Sexpr and Qexpr are like the same thing, so 
