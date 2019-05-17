@@ -516,6 +516,18 @@ mvfl_val_t* mvfl_val_read_sym( mpc_ast_t* tree ) {
    this function isn't actually all that hard than I made it out to be... :-) */
 void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
     
+    // First remove the spaces from the tree.
+    for ( int i = 0; i < tree->children_num; i += 1 ) {
+        if ( *tree->children[i]->contents == ' ' ) {
+            mpc_ast_delete( tree->children[i] );
+            memmove( &tree->children[i],
+                     &tree->children[i+1],
+                     sizeof(mpc_ast_t*) * (tree->children_num - i - 1) );
+            tree->children_num -= 1;
+            i -= 1;
+        }
+    } 
+
     // If the current passed in Sexpr is empty...
     if ( sexpr->count == 0 ) {
         mvfl_read_ast( tree->children[1], sexpr ); // symbol
@@ -536,15 +548,17 @@ void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
 
         mpc_ast_t* prevOp = tree->children[i-2];
         mpc_ast_t* currOp = tree->children[i];
+        mpc_ast_t* nextArg = tree->children[i+1];
 
-        // Verify that operators with the samae precedence (+- and */) are on thee
-        // same level of the tree. If they are not, something is wrong with our grammar.
+        // Verify that ops with same precedence are on the same level of the tree.
         if ( strcmp( prevOp->tag,currOp->tag ) == 0 ) {
+            // If ops are equal, just append the arg.
+            // Otherwise, enclose and prepend op, and then append the next arg.
             if ( strcmp( prevOp->contents,currOp->contents ) != 0 ) {
                 mvfl_sexpr_enclose( sexpr );
                 mvfl_sexpr_prepend( sexpr, mvfl_val_from_symbol(currOp->contents) );
             }
-            mvfl_read_ast( tree->children[i+1], sexpr );
+            mvfl_read_ast( nextArg, sexpr );
         }
         else {
             fprintf(stderr,"Your grammar is messed up Andrey!\n");
@@ -554,7 +568,6 @@ void mvfl_read_infix_into_sexpr( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
     }
 
 }
-
 
 // Reads an MPC abstract syntax tree by reading it into an MVFL S-Expression.
 void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
@@ -577,7 +590,8 @@ void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
     }
     // We do not create anotha sexpr for these tags because it would be redundant.
     // They exist mostly in the grammar for neatness and proper parsing.
-    else if ( strcmp(tag,">") == 0 || strstr(tag,"PrefixExpr") || strstr(tag,"Base")) {
+    else if ( strcmp(tag,">") == 0 || strstr(tag,"PrefixExpr") || strstr(tag,"Base")
+              || strstr(tag,"Expr") ) {
         anothaSexpr = sexpr;
     }
     else if ( strstr(tag,"Sexpr") ) {
@@ -588,6 +602,11 @@ void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
         qexpr = mvfl_qexpr_init();
         mvfl_sexpr_append( sexpr, mvfl_val_from_qexpr( qexpr ) );
     }
+    /*
+    else if ( strstr(tag,"Space") == 0 ) {
+        //return;
+    }
+    */
     else {
         fprintf(stderr,"Failed to read AST. The tag %s was not handled.\n", tag);
         exit(21);
@@ -598,11 +617,12 @@ void mvfl_read_ast( mpc_ast_t* tree, mvfl_sexpr_t* sexpr ) {
 
         mpc_ast_t* childTree = tree->children[i];
 
-        if ( strcmp(childTree->contents, "(") == 0 ) { continue; }
-        if ( strcmp(childTree->contents, ")") == 0 ) { continue; }
-        if ( strcmp(childTree->contents, "{") == 0 ) { continue; }
-        if ( strcmp(childTree->contents, "}") == 0 ) { continue; }
         if ( strcmp(childTree->tag, "regex") == 0 ) { continue; }
+        if ( strcmp(childTree->contents, "(") == 0 ) { continue; }
+        else if ( strcmp(childTree->contents, ")") == 0 ) { continue; }
+        else if ( strcmp(childTree->contents, "{") == 0 ) { continue; }
+        else if ( strcmp(childTree->contents, "}") == 0 ) { continue; }
+        else if ( strcmp(childTree->contents, " ") == 0 ) { continue; }
 
         if ( anothaSexpr != NULL ) { mvfl_read_ast(childTree, anothaSexpr); }
         else if ( qexpr != NULL ) { fprintf(stderr,"HERE I AM\n"); mvfl_read_ast(childTree, qexpr); }
@@ -668,6 +688,7 @@ mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr ) {
 }
 
 mvfl_val_t* mvfl_qexpr_head_intern( mvfl_sexpr_t* args ) {
+
     if ( args->first->value->type != MVFL_QEXPR ) {
         mvfl_sexpr_delete( args );
         return mvfl_val_from_error("Function `head` requires a Q-Expr.");

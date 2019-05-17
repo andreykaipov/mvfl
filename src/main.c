@@ -76,11 +76,12 @@ int main( int argc, char** argv ) {
     mpc_parser_t* Sexpr = mpc_new("Sexpr");
     mpc_parser_t* Qexpr = mpc_new("Qexpr");
     mpc_parser_t* Mvfl = mpc_new("Mvfl");
+    mpc_parser_t* Space = mpc_new("Space");
 
-    mpca_lang_contents( MPCA_LANG_DEFAULT, GRAMMAR_FILE,
+    mpca_lang_contents( MPCA_LANG_WHITESPACE_SENSITIVE, GRAMMAR_FILE,
         Integer, Float, Number, PlusOp, MultOp, ExpnOp, Symbol,
         InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr, Qexpr,
-        Mvfl
+        Mvfl, Space
     );
 
     // Finish initializing grammar.
@@ -138,10 +139,10 @@ int main( int argc, char** argv ) {
 
     }
 
-    mpc_cleanup( 16,
+    mpc_cleanup( 17,
         Integer, Float, Number, PlusOp, MultOp, ExpnOp, Symbol,
         InfixExpr, PrefixExpr, Factor, Term, Base, Expr, Sexpr, Qexpr,
-        Mvfl
+        Mvfl, Space
     );
     return 0;
 
