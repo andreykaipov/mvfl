@@ -646,12 +646,16 @@ mvfl_val_t* mvfl_eval_val( mvfl_val_t* value ) {
 
 mvfl_val_t* mvfl_eval_sexpr( mvfl_sexpr_t* sexpr ) {
     
-    mvfl_cons_cell_t* cell = sexpr->first;
-    while ( cell != NULL ) {
-        mvfl_val_t* evaluated = mvfl_eval_val( cell->value );
- //       mvfl_val_delete( cell->value );
-        cell->value = evaluated;
-        cell = cell->next;
+    mvfl_val_t* first = sexpr->first->value;
+    if ( first->type != MVFL_SYMBOL || // short-circuit or
+         strcmp(first->manifestation.symbol,"list") != 0 ) {
+        mvfl_cons_cell_t* cell = sexpr->first;
+        while ( cell != NULL ) {
+            mvfl_val_t* evaluated = mvfl_eval_val( cell->value );
+            // mvfl_val_delete( cell->value );
+            cell->value = evaluated;
+            cell = cell->next;
+        }
     }
 
     if ( sexpr->count == 0 ) {
@@ -746,37 +750,39 @@ of which are Q-Expressions.");
 }
 
 mvfl_val_t* mvfl_qexpr_list_intern( mvfl_sexpr_t* args ) {
-    /*if ( args->first->value->type != MVFL_SEXPR ) {
-        mvfl_sexpr_delete( args );
-        return mvfl_val_from_error("Function 'list' requires an S-Expression.");
-    }
-    if ( args->count != 1 ) {
-        mvfl_sexpr_delete( args );
-        return mvfl_val_from_error("Function 'list' passed more than 1 argument.");
-    }*/
-    /*mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
-    mvfl_sexpr_t* sexpr = val->manifestation.sexpr;
-    free( val );
-    mvfl_sexpr_delete( args );*/
     return mvfl_val_from_qexpr( args );
 }
 
 mvfl_val_t* mvfl_qexpr_eval_intern( mvfl_sexpr_t* args ) {
-    if ( args->first->value->type != MVFL_QEXPR ) {
+    /*
+    if ( args->first->value->type != MVFL_QEXPR &&
+         args->first->value->type != MVFL_SEXPR ) {
         mvfl_sexpr_delete( args );
-        return mvfl_val_from_error("Function 'eval' requires a Q-Expr.");
+        return mvfl_val_from_error("Function 'eval' requires a Q-Expr or a S-Expr.");
     }
+    */
     if ( args->count != 1 ) {
         mvfl_sexpr_delete( args );
         return mvfl_val_from_error("Function 'eval' passed more than 1 argument.");
     }
-    mvfl_val_t* val = mvfl_sexpr_pop( args, 0 );
+    /*
+    mvfl_val_t* val = mvfl_qexpr_pop( args, 0 );
     mvfl_qexpr_t* qexpr = val->manifestation.qexpr;
     free( val );
     mvfl_sexpr_delete( args );
     return mvfl_qexpr_eval( qexpr );
+    */
+    if ( args->first->value->type == MVFL_QEXPR ) {
+        mvfl_val_t* val = mvfl_qexpr_pop( args, 0 );
+        mvfl_qexpr_t* qexpr = val->manifestation.qexpr;
+        free( val );
+        mvfl_sexpr_delete( args );
+        return mvfl_qexpr_eval( qexpr );
+    }
+    else {
+        return mvfl_eval_sexpr( args );
+    }
 }
-
 
 mvfl_val_t* mvfl_eval_intern_op( char* op, mvfl_sexpr_t* sexpr ) {
 
